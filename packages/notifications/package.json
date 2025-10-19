@@ -1,0 +1,30 @@
+{
+  "name": "@workspace/notifications",
+  "version": "0.0.0",
+  "exports": {
+    ".": {
+      "default": "./src/index.ts"
+    },
+    "./service": {
+      "default": "./src/service.ts"
+    },
+    "./notification-service": {
+      "default": "./src/notification-service.ts"
+    }
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings 0",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.9",
+    "@workspace/eslint-config": "workspace:*",
+    "@workspace/typescript-config": "workspace:*",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "firebase": "^12.4.0",
+    "firebase-admin": "^13.5.0"
+  }
+}

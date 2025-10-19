@@ -1,0 +1,810 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  name          String?
+  email         String?
+  emailVerified Boolean @default(false)
+  password      String?
+  image         String?
+  role          String  @default("User")
+  status        String  @default("Pending")
+  phone         String?
+
+  notificationsEnabled Boolean @default(false)
+
+  roleIds String[] @db.ObjectId
+  roles   Role[]   @relation(fields: [roleIds], references: [id])
+
+  accounts      Account[]
+  sessions      Session[]
+  documents     Document[]
+  fcmTokens     FcmToken[]
+  notifications Notification[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([email])
+}
+
+model Role {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  name        String  @unique
+  description String?
+
+  userIds String[] @db.ObjectId
+  users   User[]   @relation(fields: [userIds], references: [id])
+
+  permissionIds String[]     @db.ObjectId
+  permissions   Permission[] @relation(fields: [permissionIds], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Permission {
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  name        String  @unique
+  description String?
+  module      String
+  action      String
+
+  roleIds String[] @db.ObjectId
+  roles   Role[]   @relation(fields: [roleIds], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([module, action])
+}
+
+model FcmToken {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  token  String @unique
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  deviceType String?
+  browser    String?
+  os         String?
+  deviceName String?
+
+  isActive Boolean  @default(true)
+  lastUsed DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([isActive])
+}
+
+model Account {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String    @db.ObjectId
+  accountId    String
+  providerId   String
+  accessToken  String?
+  refreshToken String?
+  idToken      String?
+  expiresAt    DateTime?
+  password     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  sessionToken String   @unique @map("token")
+  userId       String   @db.ObjectId
+  expiresAt    DateTime
+  ipAddress    String?
+  userAgent    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Verification {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([identifier, value])
+}
+
+model Notification {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  userId String? @db.ObjectId
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title    String
+  body     String
+  imageUrl String?
+  type     String
+
+  actionUrl  String?
+  actionData Json?
+
+  status String    @default("Pending")
+  sentAt DateTime?
+  readAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+}
+
+model ClassName {
+  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  name     String @unique
+  level    String
+  position Int    @default(0)
+
+  admissionFees    AdmissionFee[]
+  salaryFees       SalaryFee[]
+  students         Student[]
+  Batches          Batch[]
+  attendances      Attendance[]
+  attendanceGroups AttendanceGroup[]
+  homeworks        Homework[]
+  homeworkGroups   HomeworkGroup[]
+  exams            Exam[]
+  examResults      ExamResultGroup[]
+  documents        Document[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Subject {
+  id    String  @id @default(auto()) @map("_id") @db.ObjectId
+  name  String
+  level String
+  group String?
+
+  homeworks        Homework[]
+  homeworkGroups   HomeworkGroup[]
+  exams            Exam[]
+  examResultGroups ExamResultGroup[]
+  documents        Document[]
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  BatchClass BatchClass[]
+}
+
+model Counter {
+  id    String @id @default(auto()) @map("_id") @db.ObjectId
+  type  String @unique
+  value Int    @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdmissionFee {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  amount Int
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SalaryFee {
+  id     String  @id @default(auto()) @map("_id") @db.ObjectId
+  type   String
+  group  String?
+  amount Int
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Institute {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  type String
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  session     String
+  studentId   Int
+  name        String
+  nameBangla  String
+  fName       String
+  mName       String
+  gender      String
+  dob         DateTime
+  nationality String
+  religion    String
+  imageUrl    String?
+
+  school  String
+  section String?
+  shift   String?
+  group   String?
+  roll    Int
+
+  fPhone String
+  mPhone String
+
+  presentHouseNo    String
+  presentMoholla    String
+  presentPost       String
+  presentThana      String
+  permanentVillage  String
+  permanentPost     String
+  permanentThana    String
+  permanentDistrict String
+
+  type         String
+  admissionFee Int
+  salaryFee    Int
+  courseFee    Int?
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  batchId String? @db.ObjectId
+  batch   Batch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)
+
+  studentStatus StudentStatus?
+
+  admissionPayments AdmissionPayment[]
+  salaryPayments    SalaryPayment[]
+  attendances       Attendance[]
+  homeworks         Homework[]
+  examResults       ExamResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model StudentStatus {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  status       String    @default("Present")
+  absentReason String?
+  absentDate   DateTime?
+
+  studentId String  @unique @db.ObjectId
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AdmissionPayment {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  className     String
+  amount        Int
+  method        String
+  status        String
+  paymentStatus String    @default("Unpaid")
+  session       String
+  month         String
+  paidAt        DateTime?
+
+  studentId String  @db.ObjectId
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SalaryPayment {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  transactionId String?
+  amount        Int
+  session       String
+  month         String
+  className     String
+  method        String?
+  status        String
+  paymentStatus String    @default("Unpaid")
+  note          String?
+  paidAt        DateTime?
+
+  studentId String  @db.ObjectId
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Teacher {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  session     String
+  teacherId   Int
+  name        String
+  fName       String
+  mName       String
+  dob         DateTime
+  gender      String
+  nationality String
+  religion    String
+  imageUrl    String?
+
+  presentHouseNo    String
+  presentMoholla    String
+  presentPost       String
+  presentThana      String
+  permanentVillage  String
+  permanentPost     String
+  permanentThana    String
+  permanentDistrict String
+
+  phone    String
+  altPhone String?
+
+  currentInstitution String
+  currentSubject     String
+
+  level          String[]
+  availableTimes String[] @default([])
+  availableDays  String[] @default([])
+  availableSlots String[] @default([])
+  bookedSlots    String[] @default([])
+  classRate      Int
+
+  teacherStatus TeacherStatus?
+
+  advances TeacherAdvance[]
+  payments TeacherPayment[]
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  BatchClass BatchClass[]
+}
+
+model TeacherStatus {
+  id           String    @id @default(auto()) @map("_id") @db.ObjectId
+  status       String    @default("Present")
+  absentReason String?
+  absentDate   DateTime?
+
+  teacherId String  @unique @db.ObjectId
+  Teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model House {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  roomCount Int
+
+  rooms    Room[]
+  payments HousePayment[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Room {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  capacity       Int
+  availableTimes String[] @default([])
+  bookTimes      String[] @default([])
+
+  houseId String @db.ObjectId
+  house   House  @relation(fields: [houseId], references: [id], onDelete: Cascade)
+
+  batches Batch[]
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  BatchClass BatchClass[]
+}
+
+model Batch {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  name           String
+  batchClassName String
+  roomName       String
+  capacity       Int
+  time           String[]
+  classTime      String[]
+  level          String
+
+  roomId String @db.ObjectId
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  students         Student[]
+  attendence       Attendance[]
+  attendenceGroup  AttendanceGroup[]
+  homeWorks        Homework[]
+  homeWorkGroups   HomeworkGroup[]
+  exams            Exam[]
+  examResultsGroup ExamResultGroup[]
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  BatchClass BatchClass[]
+}
+
+model BatchClass {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  time      String
+  day       String
+  batchTime String
+
+  roomName String
+  roomId   String @db.ObjectId
+  room     Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+
+  subjectId   String  @db.ObjectId
+  subject     Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subjectName String
+
+  teacherId   String  @db.ObjectId
+  teacher     Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacherName String
+
+  batchId   String @db.ObjectId
+  batch     Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batchName String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TeacherAdvance {
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  teacherName  String
+  teacherIndex Int
+  session      String
+  month        String
+  amount       Int
+  status       String @default("Pending")
+
+  teacherId String  @db.ObjectId
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: NoAction)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HousePayment {
+  id            String @id @default(auto()) @map("_id") @db.ObjectId
+  houseName     String
+  session       String
+  month         String
+  amount        Int
+  method        String
+  paymentStatus String
+
+  houseId String @db.ObjectId
+  house   House  @relation(fields: [houseId], references: [id], onDelete: NoAction)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model UtilityPayment {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  name    String
+  amount  Int
+  month   String
+  session String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model OtherPayment {
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  name    String
+  amount  Int
+  month   String
+  session String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model TeacherPayment {
+  id            String  @id @default(auto()) @map("_id") @db.ObjectId
+  teacherName   String
+  teacherIndex  Int
+  amount        Int
+  netAmount     Int
+  session       String
+  classUnit     Int
+  incentive     Int?
+  deduction     Int?
+  deductionUnit Int?
+  month         String
+  status        String  @default("Pending")
+  note          String?
+  advance       Int     @default(0)
+
+  teacherId String  @db.ObjectId
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Attendance {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  session      String
+  month        String
+  date         DateTime
+  day          String
+  status       String
+  absentReason String?
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  studentId String  @db.ObjectId
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  batchId String @db.ObjectId
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  attendenceGroupId String          @db.ObjectId
+  attendenceGroup   AttendanceGroup @relation(fields: [attendenceGroupId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model AttendanceGroup {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  session String
+  month   String
+  date    DateTime
+  day     String
+  name    String
+  total   Int
+  present Int
+  absent  Int
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  batchId String @db.ObjectId
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  attendances Attendance[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Homework {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  hasFinished Boolean  @default(false)
+  date        DateTime
+  feedback    String?
+
+  studentId String  @db.ObjectId
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  subjectId String  @db.ObjectId
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  batchId String @db.ObjectId
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  homeworkGroupId String        @db.ObjectId
+  homeworkGroup   HomeworkGroup @relation(fields: [homeworkGroupId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HomeworkGroup {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String
+  date       DateTime
+  total      Int
+  finished   Int      @default(0)
+  unfinished Int      @default(0)
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  batchId String @db.ObjectId
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  subjectId String  @db.ObjectId
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  homeworks Homework[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExamCategory {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  name String
+
+  exams            Exam[]
+  examResultGroups ExamResultGroup[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Exam {
+  id      String   @id @default(auto()) @map("_id") @db.ObjectId
+  name    String
+  topic   String
+  date    DateTime
+  total   Int
+  cq      Int?
+  mcq     Int?
+  written Int?
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  batchId String @db.ObjectId
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  subjectId String  @db.ObjectId
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  examCategoryId String       @db.ObjectId
+  examCategory   ExamCategory @relation(fields: [examCategoryId], references: [id], onDelete: Cascade)
+
+  examResultGroup ExamResultGroup?
+
+  examResults ExamResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExamResultGroup {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  total        Int
+  attended     Int    @default(0)
+  absent       Int    @default(0)
+  averageMarks Float?
+  highestMarks Int?
+  lowestMarks  Int?
+  status       String @default("Unpublished")
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  batchId String @db.ObjectId
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+
+  subjectId String  @db.ObjectId
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  examCategoryId String       @db.ObjectId
+  examCategory   ExamCategory @relation(fields: [examCategoryId], references: [id], onDelete: Cascade)
+
+  examId String @unique @db.ObjectId
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  examResults ExamResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExamResult {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId String  @db.ObjectId
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  examId String @db.ObjectId
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  examResultGroupId String          @db.ObjectId
+  examResultGroup   ExamResultGroup @relation(fields: [examResultGroupId], references: [id], onDelete: Cascade)
+
+  cqMarks      Int?
+  mcqMarks     Int?
+  writtenMarks Int?
+  totalMarks   Int?
+  status       String @default("Unpublished")
+
+  attended Boolean
+  remarks  String?
+  grade    String?
+  merit    Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Document {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  type         String
+  name         String
+  deliveryDate DateTime
+  hasReceived  Boolean  @default(true)
+  hasFinished  Boolean  @default(false)
+  hasPrinted   Boolean  @default(false)
+  noOfCopy     Int
+
+  classNameId String    @db.ObjectId
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+
+  subjectId String  @db.ObjectId
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  printTasks PrintTask[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PrintTask {
+  id                String  @id @default(auto()) @map("_id") @db.ObjectId
+  status            String  @default("Pending")
+  path              String?
+  correctionPrinted Boolean @default(false)
+
+  documentId String   @db.ObjectId
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Todo {
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  text   String
+  status String @default("Pending")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
