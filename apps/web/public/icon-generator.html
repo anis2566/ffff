@@ -1,0 +1,124 @@
+<!-- Save as apps/web/public/icon-generator.html -->
+<!doctype html>
+<html>
+  <head>
+    <title>Icon Generator</title>
+    <style>
+      body {
+        font-family: system-ui;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .icon-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+      .icon-card {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        text-align: center;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      canvas {
+        border: 1px solid #ddd;
+        border-radius: 4px;
+      }
+      button {
+        margin-top: 10px;
+        padding: 8px 16px;
+        background: #2563eb;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #1d4ed8;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Notification Icon Generator</h1>
+    <p>Download these icons and save them in /public/icons/</p>
+
+    <div class="icon-grid">
+      <div class="icon-card">
+        <h3>📚 Assignment</h3>
+        <canvas id="assignment" width="192" height="192"></canvas>
+        <button onclick="download('assignment')">Download</button>
+      </div>
+
+      <div class="icon-card">
+        <h3>📅 Class Schedule</h3>
+        <canvas id="class" width="192" height="192"></canvas>
+        <button onclick="download('class')">Download</button>
+      </div>
+
+      <div class="icon-card">
+        <h3>📢 Announcement</h3>
+        <canvas id="announcement" width="192" height="192"></canvas>
+        <button onclick="download('announcement')">Download</button>
+      </div>
+
+      <div class="icon-card">
+        <h3>💬 Message</h3>
+        <canvas id="message" width="192" height="192"></canvas>
+        <button onclick="download('message')">Download</button>
+      </div>
+
+      <div class="icon-card">
+        <h3>⭐ Grade</h3>
+        <canvas id="grade" width="192" height="192"></canvas>
+        <button onclick="download('grade')">Download</button>
+      </div>
+
+      <div class="icon-card">
+        <h3>⏰ Reminder</h3>
+        <canvas id="reminder" width="192" height="192"></canvas>
+        <button onclick="download('reminder')">Download</button>
+      </div>
+    </div>
+
+    <script>
+      const icons = {
+        assignment: { bg: "#3b82f6", emoji: "📚" },
+        class: { bg: "#8b5cf6", emoji: "📅" },
+        announcement: { bg: "#ec4899", emoji: "📢" },
+        message: { bg: "#10b981", emoji: "💬" },
+        grade: { bg: "#f59e0b", emoji: "⭐" },
+        reminder: { bg: "#ef4444", emoji: "⏰" },
+      };
+
+      function drawIcon(id, bg, emoji) {
+        const canvas = document.getElementById(id);
+        const ctx = canvas.getContext("2d");
+
+        // Background
+        ctx.fillStyle = bg;
+        ctx.fillRect(0, 0, 192, 192);
+
+        // Emoji
+        ctx.font = "100px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(emoji, 96, 96);
+      }
+
+      function download(id) {
+        const canvas = document.getElementById(id);
+        const link = document.createElement("a");
+        link.download = `${id}-icon.png`;
+        link.href = canvas.toDataURL();
+        link.click();
+      }
+
+      // Draw all icons
+      Object.entries(icons).forEach(([id, { bg, emoji }]) => {
+        drawIcon(id, bg, emoji);
+      });
+    </script>
+  </body>
+</html>

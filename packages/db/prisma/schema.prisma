@@ -25,11 +25,12 @@ model User {
   roleIds String[] @db.ObjectId
   roles   Role[]   @relation(fields: [roleIds], references: [id])
 
-  accounts      Account[]
-  sessions      Session[]
-  documents     Document[]
-  fcmTokens     FcmToken[]
-  notifications Notification[]
+  accounts          Account[]
+  sessions          Session[]
+  documents         Document[]
+  fcmTokens         FcmToken[]
+  notifications     Notification[]
+  sentNotifications Notification[] @relation("SentBy")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -137,27 +138,42 @@ model Verification {
 model Notification {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
-  userId String? @db.ObjectId
-  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  senderId String? @db.ObjectId
+  sender   User?   @relation("SentBy", fields: [senderId], references: [id], onDelete: SetNull)
+
+  // Content
   title    String
   body     String
   imageUrl String?
   type     String
+  priority String
 
-  actionUrl  String?
-  actionData Json?
+  // Action/Metadata
+  actionUrl   String?
+  actionLabel String? // "View Assignment", "See Details"
+  data        Json? // Additional metadata
 
-  status String    @default("Pending")
-  sentAt DateTime?
-  readAt DateTime?
+  // Status
+  status String @default("Pending")
+
+  // Push notification details
+  fcmMessageId String? // FCM message ID
+  fcmError     String? // Error message if failed
+
+  // Tracking
+  sentAt      DateTime?
+  deliveredAt DateTime? // When FCM confirmed delivery
+  readAt      DateTime? // When user opened/read
+  clickedAt   DateTime? // When user clicked the notification
+
+  // Scheduling (for future notifications)
+  scheduledFor DateTime? // Send at specific time
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([status])
-  @@index([type])
 }
 
 model ClassName {

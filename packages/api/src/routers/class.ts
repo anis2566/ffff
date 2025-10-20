@@ -4,7 +4,6 @@ import z from "zod";
 import { permissionProcedure, protectedProcedure } from "../trpc";
 
 import { ClassNameSchema } from "@workspace/utils/schemas";
-import { sendNotificationToUser } from "@workspace/notifications/notification-service";
 
 export const classRouter = {
   createOne: permissionProcedure("class", "create")
@@ -33,14 +32,15 @@ export const classRouter = {
           };
         }
 
-        // await ctx.db.className.create({
-        //   data: {
-        //     name,
-        //     level,
-        //     position: parseInt(position),
-        //   },
-        // });
+        const newClass = await ctx.db.className.create({
+          data: {
+            name,
+            level,
+            position: parseInt(position),
+          },
+        });
 
+        // Find accountant user
         const accountUser = await ctx.db.user.findFirst({
           where: {
             roles: {
@@ -49,22 +49,22 @@ export const classRouter = {
               },
             },
           },
-          include: {
-            fcmTokens: true,
+          select: {
+            id: true,
+            name: true,
+            fcmTokens: {
+              where: {
+                isActive: true,
+              },
+            },
           },
         });
 
-        if (!accountUser || accountUser.fcmTokens.length === 0) {
-          return { success: false, message: "Accountant not found" };
-        }
-
-        await sendNotificationToUser(accountUser.id, {
-          title: "New Class",
-          body: `New class created: ${name}`,
-          imageUrl: "https://cp3c2zrvx5.ufs.sh/f/ayZgjKIJUTePzHzvWDQJLzjR4Iu8hPiYMQC3Oxadv5tEbe2G",
-        });
-
-        return { success: false, message: "Class created" };
+        return {
+          success: true,
+          message: "Class created successfully",
+          data: newClass,
+        };
       } catch (error) {
         console.error("Error creating class:", error);
         return { success: false, message: "Internal server error" };

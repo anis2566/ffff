@@ -27,7 +27,6 @@
     "@trpc/server": "^11.6.0",
     "@workspace/auth": "workspace:*",
     "@workspace/db": "workspace:*",
-    "@workspace/notifications": "workspace:*",
     "bcryptjs": "^3.0.2",
     "date-fns": "^4.1.0",
     "superjson": "^2.2.2",

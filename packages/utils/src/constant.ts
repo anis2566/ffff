@@ -156,6 +156,24 @@ export enum ROLE {
   Admin = "Admin",
 }
 
+export enum NOTIFICATION_TYPE {
+  Pending = "Pending",
+  Scheduled = "Scheduled",
+  Sending = "Sending",
+  Sent = "Sent",
+  Delivered = "Delivered",
+  Read = "Read",
+  Clicked = "Clicked",
+  Failed = "Failed",
+}
+
+export enum NOTIFICATION_PRIORITY {
+  Low = "Low",
+  Normal = "Normal",
+  High = "High",
+  Urgent = "Urgent",
+}
+
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_LIMIT = 5;
 export const DEFAULT_PAGE_SIZE = 5;

@@ -1,6 +1,5 @@
 import { ContentLayout } from "@/modules/ui/layout/content-layout";
 import { DashboardView } from "@/modules/ui/views/dashboard-view";
-import TestNotificationPage from "@/modules/ui/views/test";
 import { prisma } from "@workspace/db";
 import { Suspense } from "react";
 
@@ -15,10 +14,7 @@ const Dashboard = async () => {
   // })
   return (
     <ContentLayout>
-      <Suspense fallback={<div>Loading...</div>}>
-        <TestNotificationPage />
-        {/* <DashboardView /> */}
-      </Suspense>
+      <Suspense fallback={<div>Loading...</div>}>Dashboard</Suspense>
     </ContentLayout>
   );
 };
