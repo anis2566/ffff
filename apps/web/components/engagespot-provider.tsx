@@ -2,6 +2,7 @@
 
 import { EngagespotProvider as Provider } from "@engagespot/react-component";
 import { EnableWebPush } from "./enable-web-push";
+import { env } from "@/env";
 
 interface EngagespotContextType {
   children: React.ReactNode;
@@ -13,7 +14,11 @@ export const EngagespotProvider = ({
   userId,
 }: EngagespotContextType) => {
   return (
-    <Provider apiKey={process.env.NEXT_PUBLIC_ENGAGESPOT_API_KEY!} userId={userId} dataRegion="us">
+    <Provider
+      apiKey={env.NEXT_PUBLIC_ENGAGESPOT_API_KEY}
+      userId={userId}
+      dataRegion="us"
+    >
       {children}
       <EnableWebPush />
     </Provider>

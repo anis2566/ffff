@@ -1,5 +1,6 @@
 "use client";
 
+import { env } from "@/env";
 import { useAuth } from "@/lib/use-auth";
 import { Engagespot } from "@engagespot/react-component";
 
@@ -10,7 +11,7 @@ export const Notifications = () => {
 
   return (
     <Engagespot
-      apiKey={process.env.NEXT_PUBLIC_ENGAGESPOT_API_KEY!}
+      apiKey={env.NEXT_PUBLIC_ENGAGESPOT_API_KEY}
       userId={session.user.id}
       dataRegion="us"
     />
