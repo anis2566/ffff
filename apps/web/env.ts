@@ -13,14 +13,20 @@ export const env = createEnv({
   },
   server: {
     DATABASE_URL: z.string().url(),
+    GETSTREAM_API_SECRET: z.string(),
+    ENGAGESPOT_API_SECRET: z.string(),
   },
   client: {
     NEXT_PUBLIC_ENGAGESPOT_API_KEY: z.string(),
+    NEXT_PUBLIC_GETSTREAM_API_KEY: z.string(),
   },
   runtimeEnv: {
     DATABASE_URL: process.env.DATABASE_URL,
     NODE_ENV: process.env.NODE_ENV,
+    ENGAGESPOT_API_SECRET: process.env.ENGAGESPOT_API_SECRET,
+    GETSTREAM_API_SECRET: process.env.GETSTREAM_API_SECRET,
     NEXT_PUBLIC_ENGAGESPOT_API_KEY: process.env.NEXT_PUBLIC_ENGAGESPOT_API_KEY,
+    NEXT_PUBLIC_GETSTREAM_API_KEY: process.env.NEXT_PUBLIC_GETSTREAM_API_KEY,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   skipValidation:
