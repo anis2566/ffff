@@ -34,6 +34,7 @@ import { userRouter } from "./routers/user";
 import { roleRouter } from "./routers/role";
 import { permissionRouter } from "./routers/permission";
 import { rbacRouter } from "./routers/rbac";
+import { getStreamRouter } from "./routers/get-stream";
 
 export const appRouter = createTRPCRouter({
   auth: authRouter,
@@ -69,7 +70,8 @@ export const appRouter = createTRPCRouter({
   user: userRouter,
   role: roleRouter,
   permission: permissionRouter,
-  rbac: rbacRouter
+  rbac: rbacRouter,
+  getStream: getStreamRouter
 });
 
 // export type definition of API

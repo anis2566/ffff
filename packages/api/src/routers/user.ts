@@ -1,7 +1,20 @@
 import type { TRPCRouterRecord } from "@trpc/server";
 import z from "zod";
+import { EngagespotClient } from "@engagespot/node";
+import { StreamChat } from "stream-chat";
 
 import { permissionProcedure, protectedProcedure } from "../trpc";
+
+export const engagespot = EngagespotClient({
+  apiKey: process.env.NEXT_PUBLIC_ENGAGESPOT_API_KEY!,
+  apiSecret: process.env.ENGAGESPOT_API_SECRET!,
+  dataRegion: "us",
+});
+
+export const getStreamServerClient = StreamChat.getInstance(
+  process.env.NEXT_PUBLIC_GETSTREAM_API_KEY!,
+  process.env.GETSTREAM_API_SECRET
+);
 
 export const userRouter = {
   forSelect: protectedProcedure
@@ -49,6 +62,16 @@ export const userRouter = {
           return { success: false, message: "Role not found" };
         }
 
+        const user = await ctx.db.user.findUnique({
+          where: {
+            id: userId,
+          },
+        });
+
+        if (!user) {
+          return { success: false, message: "User not found" };
+        }
+
         const selectedRoleIds = dbRoles.map((role) => role.id);
 
         await ctx.db.user.update({
@@ -60,6 +83,17 @@ export const userRouter = {
               set: selectedRoleIds,
             },
           },
+        });
+
+        await engagespot.createOrUpdateUser(userId, {
+          email: user.email || undefined,
+        });
+
+        await getStreamServerClient.upsertUser({
+          id: user.id,
+          name: user.name || undefined,
+          role: "user",
+          username: user.name || undefined,
         });
 
         return {

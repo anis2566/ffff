@@ -706,6 +706,19 @@ export const navigationData: NavGroup[] = [
     ],
   },
   {
+    label: "Messaging",
+    items: [
+      {
+        title: "Chat",
+        url: "/chat",
+        icon: MessageSquareMore,
+        // permission: { module: "house", action: "read" },
+        role: "Admin",
+        items: [],
+      },
+    ],
+  },
+  {
     label: "Room & Houses",
     items: [
       {
