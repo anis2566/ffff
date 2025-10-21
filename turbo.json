@@ -9,7 +9,11 @@
       "env": [
         "DATABASE_URL",
         "AUTH_SECRET",
-        "NODE_ENV"
+        "NODE_ENV",
+        "NEXT_PUBLIC_ENGAGESPOT_API_KEY",
+        "ENGAGESPOT_API_SECRET",
+        "NEXT_PUBLIC_GETSTREAM_API_KEY",
+        "GETSTREAM_API_SECRET"
       ]
     },
     "lint": {
@@ -25,7 +29,11 @@
       "env": [
         "DATABASE_URL",
         "AUTH_SECRET",
-        "NODE_ENV"
+        "NODE_ENV",
+        "NEXT_PUBLIC_ENGAGESPOT_API_KEY",
+        "ENGAGESPOT_API_SECRET",
+        "NEXT_PUBLIC_GETSTREAM_API_KEY",
+        "GETSTREAM_API_SECRET"
       ]
     },
     "db:generate": {
@@ -45,6 +53,10 @@
   "globalEnv": [
     "DATABASE_URL",
     "AUTH_SECRET",
-    "NODE_ENV"
+    "NODE_ENV",
+    "NEXT_PUBLIC_ENGAGESPOT_API_KEY",
+    "ENGAGESPOT_API_SECRET",
+    "NEXT_PUBLIC_GETSTREAM_API_KEY",
+    "GETSTREAM_API_SECRET"
   ]
 }
