@@ -44,7 +44,7 @@ export const ChangeRoleModal = () => {
   const { data } = useQuery(trpc.role.forSelect.queryOptions({ search: "" }));
 
   const { mutate: updateRole, isPending } = useMutation(
-    trpc.user.chngeRole.mutationOptions({
+    trpc.user.changeRole.mutationOptions({
       onError: (err) => {
         setErrorText(err.message);
         setButtonState("error");

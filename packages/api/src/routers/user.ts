@@ -39,11 +39,11 @@ export const userRouter = {
 
       return users;
     }),
-  chngeRole: permissionProcedure("user", "update")
+  changeRole: permissionProcedure("user", "update")
     .input(
       z.object({
         userId: z.string(),
-        roles: z.array(z.string()),
+        roles: z.array(z.string()), // array of role IDs or names
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -52,56 +52,51 @@ export const userRouter = {
       try {
         const dbRoles = await ctx.db.role.findMany({
           where: {
-            name: {
-              in: roles,
-            },
+            name: { in: roles }, // or use id: { in: roles } if you're passing role IDs
           },
+          select: { id: true },
         });
 
         if (dbRoles.length !== roles.length) {
-          return { success: false, message: "Role not found" };
+          return { success: false, message: "One or more roles not found" };
         }
 
         const user = await ctx.db.user.findUnique({
-          where: {
-            id: userId,
-          },
+          where: { id: userId },
         });
 
         if (!user) {
           return { success: false, message: "User not found" };
         }
 
-        const selectedRoleIds = dbRoles.map((role) => role.id);
+        const selectedRoleIds = dbRoles.map((r) => ({ id: r.id }));
 
-        await ctx.db.user.update({
-          where: {
-            id: userId,
-          },
-          data: {
-            roleIds: {
-              set: selectedRoleIds,
+        await ctx.db.$transaction(async (tx) => {
+          await tx.user.update({
+            where: { id: userId },
+            data: {
+              roles: {
+                set: [],
+                connect: selectedRoleIds,
+              },
             },
-          },
+          });
+
+          await engagespot.createOrUpdateUser(userId, {
+            email: user.email || undefined,
+          });
+
+          await getStreamServerClient.upsertUser({
+            id: user.id,
+            name: user.name || undefined,
+            role: "user",
+            username: user.name || undefined,
+          });
         });
 
-        await engagespot.createOrUpdateUser(userId, {
-          email: user.email || undefined,
-        });
-
-        await getStreamServerClient.upsertUser({
-          id: user.id,
-          name: user.name || undefined,
-          role: "user",
-          username: user.name || undefined,
-        });
-
-        return {
-          success: true,
-          message: "User roles updated.",
-        };
+        return { success: true, message: "User roles updated successfully." };
       } catch (error) {
-        console.log("Error changing user role:", error);
+        console.error("Error changing user role:", error);
         return { success: false, message: "Internal server error" };
       }
     }),
@@ -121,10 +116,15 @@ export const userRouter = {
           return { success: false, message: "User not found" };
         }
 
-        await ctx.db.user.delete({
-          where: {
-            id,
-          },
+        await ctx.db.$transaction(async (tx) => {
+          await tx.user.delete({
+            where: {
+              id,
+            },
+          });
+          await engagespot.users.delete(id);
+
+          await getStreamServerClient.deleteUser(id);
         });
 
         return { success: true, message: "User deleted" };

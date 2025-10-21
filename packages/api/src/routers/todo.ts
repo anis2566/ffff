@@ -16,6 +16,7 @@ export const todoRouter = {
         await ctx.db.todo.create({
           data: {
             text,
+            userId: ctx.session.user.id,
           },
         });
 
@@ -36,7 +37,7 @@ export const todoRouter = {
 
       try {
         const existingTodo = await ctx.db.todo.findUnique({
-          where: { id },
+          where: { id, userId: ctx.session.user.id },
         });
 
         if (!existingTodo) {
@@ -44,7 +45,7 @@ export const todoRouter = {
         }
 
         await ctx.db.todo.update({
-          where: { id },
+          where: { id, userId: ctx.session.user.id },
           data: {
             status: TODO_STATUS.Completed,
           },
@@ -63,7 +64,7 @@ export const todoRouter = {
 
       try {
         const existingTodo = await ctx.db.todo.findUnique({
-          where: { id: todoId },
+          where: { id: todoId, userId: ctx.session.user.id },
         });
 
         if (!existingTodo) {
@@ -71,7 +72,7 @@ export const todoRouter = {
         }
 
         await ctx.db.todo.delete({
-          where: { id: todoId },
+          where: { id: todoId, userId: ctx.session.user.id },
         });
 
         return { success: true, message: "Todo deleted" };
@@ -82,6 +83,9 @@ export const todoRouter = {
     }),
   getMany: protectedProcedure.query(async ({ ctx }) => {
     const todos = await ctx.db.todo.findMany({
+      where: {
+        userId: ctx.session.user.id,
+      },
       orderBy: {
         createdAt: "desc",
       },

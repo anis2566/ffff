@@ -1,7 +1,7 @@
 import type { TRPCRouterRecord } from "@trpc/server";
 import z from "zod";
 
-import { adminProcedure, permissionProcedure } from "../trpc";
+import { adminProcedure } from "../trpc";
 
 import { PermissionSchema } from "@workspace/utils/schemas";
 

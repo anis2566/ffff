@@ -5,6 +5,8 @@ import { endOfDay, startOfDay } from "date-fns";
 import { permissionProcedure, protectedProcedure } from "../trpc";
 
 import { DocumentSchema } from "@workspace/utils/schemas";
+import { triggerNotification } from "../notification";
+import { ROLE } from "@workspace/utils/constant";
 
 export const documentRouter = {
   createOne: permissionProcedure("document", "create")
@@ -33,6 +35,14 @@ export const documentRouter = {
             hasReceived: false,
           },
         });
+
+        if (userId !== ctx?.session?.user.id) {
+          void triggerNotification({
+            identifier: "new_document",
+            recipients: [userId],
+            data: {},
+          });
+        }
 
         return { success: true, message: "Document created" };
       } catch (error) {
@@ -84,6 +94,14 @@ export const documentRouter = {
             userId,
           },
         });
+
+        if (userId !== existingDocument.userId) {
+          void triggerNotification({
+            identifier: "new_document",
+            recipients: [userId],
+            data: {},
+          });
+        }
 
         return { success: true, message: "Document updated" };
       } catch (error) {
@@ -301,8 +319,28 @@ export const documentRouter = {
       const startOfTheDay = startOfDay(date || new Date());
       const endOfTheDay = endOfDay(date || new Date());
 
+      const user = await ctx.db.user.findUnique({
+        where: {
+          id: ctx?.session?.user?.id,
+        },
+        include: {
+          roles: {
+            select: {
+              name: true,
+            },
+          },
+        },
+      });
+
+      const notAdminRequest = user?.roles.some(
+        (role) => role.name === ROLE["Computer Operator"]
+      );
+
       // Build the where clause to be reused
       const whereClause = {
+        ...(notAdminRequest && {
+          userId: user?.id || "",
+        }),
         ...(booleanHasPrinted !== undefined
           ? {
               hasPrinted: booleanHasPrinted,

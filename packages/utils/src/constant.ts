@@ -389,7 +389,7 @@ export const modules = [
   },
   {
     name: "Dashboard",
-    actions: ["read", "admin", "account"],
+    actions: ["read", "admin", "account", "computer_operator"],
   },
   {
     name: "Document",
@@ -444,14 +444,6 @@ export const modules = [
     actions: ["read", "daily", "income", "expense", "final"],
   },
   {
-    name: "role",
-    actions: ["create", "read", "update", "delete"],
-  },
-  {
-    name: "room",
-    actions: ["create", "read", "update", "delete"],
-  },
-  {
     name: "salary_fee",
     actions: ["create", "read", "update", "delete"],
   },
@@ -496,6 +488,18 @@ export const modules = [
   },
   {
     name: "user",
+    actions: ["create", "read", "update", "delete"],
+  },
+  {
+    name: "chat",
+    actions: ["read"],
+  },
+  {
+    name: "role",
+    actions: ["create", "read", "update", "delete"],
+  },
+  {
+    name: "permission",
     actions: ["create", "read", "update", "delete"],
   },
 ];

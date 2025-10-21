@@ -6,11 +6,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { StreamChat } from "stream-chat";
 
-export default function useInitializeChatClient() {
+export function useInitializeChatClient() {
   const { session } = useAuth();
   const [chatClient, setChatClient] = useState<StreamChat | null>(null);
-
   const trpc = useTRPC();
+
   const { data: token } = useQuery({
     ...trpc.getStream.getToken.queryOptions(),
     enabled: !!session?.user?.id,
@@ -23,6 +23,12 @@ export default function useInitializeChatClient() {
       process.env.NEXT_PUBLIC_GETSTREAM_API_KEY!
     );
 
+    // Prevent reconnecting if already connected
+    if (client.userID) {
+      setChatClient(client);
+      return;
+    }
+
     const connect = async () => {
       try {
         await client.connectUser(
@@ -34,27 +40,19 @@ export default function useInitializeChatClient() {
           token
         );
         setChatClient(client);
-      } catch (error) {
-        console.error("Failed to connect user:", error);
+      } catch (err) {
+        console.error("Stream connect error:", err);
       }
     };
 
     connect();
 
+    // ❌ Don’t disconnect on every unmount
+    // Only disconnect when logging out or app truly closes
     return () => {
-      const disconnect = async () => {
-        try {
-          await client.disconnectUser();
-          console.log("Stream user disconnected");
-        } catch (error) {
-          console.error("Failed to disconnect user:", error);
-        } finally {
-          setChatClient(null);
-        }
-      };
-      disconnect();
+      // nothing
     };
-  }, [session?.user?.id, session?.user?.name, token]);
+  }, [session?.user?.id, token]);
 
   return chatClient;
 }

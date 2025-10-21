@@ -46,7 +46,7 @@ export const Footer = ({ type }: FooterProps) => {
         {type === "signUp"
           ? "Already have an account? "
           : "Don't have an account? "}
-        <Link href={type === "signUp" ? "/sign-in" : "/sign-up"}>
+        <Link href={type === "signUp" ? "/auth/sign-in" : "/auth/sign-up"}>
           {type === "signUp" ? "Sign In" : "Sign Up"}
         </Link>
       </FieldDescription>

@@ -30,6 +30,8 @@ model User {
   documents         Document[]
   fcmTokens         FcmToken[]
   notifications     Notification[]
+  todos             Todo[]
+
   sentNotifications Notification[] @relation("SentBy")
 
   createdAt DateTime @default(now())
@@ -820,6 +822,9 @@ model Todo {
   id     String @id @default(auto()) @map("_id") @db.ObjectId
   text   String
   status String @default("Pending")
+
+  userId String @db.ObjectId
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

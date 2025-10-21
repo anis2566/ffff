@@ -434,4 +434,79 @@ export const dashboardRouter = {
       recentSalaries,
     };
   }),
+  computerOperator: allPermissionsProcedure([
+    { module: "dashboard", action: "read" },
+    { module: "dashboard", action: "computer_operator" },
+  ]).query(async ({ ctx }) => {
+    const userId = ctx?.session?.user.id || "";
+
+    const startDate = startOfDay(new Date());
+    const endDate = endOfDay(new Date());
+
+    const [
+      todayTotalDocuments,
+      todayCompletedDocuments,
+      todayInProgressDocuments,
+      upcomingTasks,
+    ] = await Promise.all([
+      ctx.db.document.count({
+        where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+          userId,
+        },
+      }),
+      ctx.db.document.count({
+        where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+          userId,
+          hasFinished: true,
+        },
+      }),
+      ctx.db.document.count({
+        where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate,
+          },
+          userId,
+          hasFinished: false,
+        },
+      }),
+      ctx.db.document.findMany({
+        where: {
+          userId,
+          hasFinished: false,
+        },
+        include: {
+          className: {
+            select: {
+              name: true,
+            },
+          },
+          subject: {
+            select: {
+              name: true,
+            },
+          },
+        },
+        orderBy: {
+          deliveryDate: "asc",
+        },
+        take: 5,
+      }),
+    ]);
+
+    return {
+      todayTotalDocuments,
+      todayCompletedDocuments,
+      todayInProgressDocuments,
+      upcomingTasks,
+    };
+  }),
 } satisfies TRPCRouterRecord;

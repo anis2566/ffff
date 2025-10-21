@@ -64,7 +64,7 @@ export const EditDocumentForm = ({ id }: EditDocumentFormProps) => {
         queryClient.invalidateQueries({
           queryKey: trpc.document.getMany.queryKey(),
         });
-        router.push("/exam/document");
+        router.push("/document");
       },
     })
   );

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LayoutGrid, LogOut, User } from "lucide-react";
+import { LogOut, MessageSquare, User } from "lucide-react";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -73,13 +73,13 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem className="hover:cursor-pointer" asChild>
-            <Link href="/dashboard" className="flex items-center">
-              <LayoutGrid className="mr-3 h-4 w-4 text-muted-foreground" />
-              Dashboard
+            <Link href="/chat" className="flex items-center">
+              <MessageSquare className="mr-3 h-4 w-4 text-muted-foreground" />
+              Chat
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem className="hover:cursor-pointer" asChild>
-            <Link href="/dashboard/profile" className="flex items-center">
+            <Link href="/profile" className="flex items-center">
               <User className="mr-3 h-4 w-4 text-muted-foreground" />
               Profile
             </Link>

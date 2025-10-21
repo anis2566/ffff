@@ -1,20 +1,18 @@
+import Loader from "@/components/loader";
+import { getAuth } from "@/lib/get-auth";
 import { ContentLayout } from "@/modules/ui/layout/content-layout";
 import { DashboardView } from "@/modules/ui/views/dashboard-view";
 import { prisma } from "@workspace/db";
 import { Suspense } from "react";
 
 const Dashboard = async () => {
-  // await prisma.permission.deleteMany();
-  // await prisma.role.updateMany({
-  //   data: {
-  //     permissionIds: {
-  //       set: [],
-  //     },
-  //   }
-  // })
+  const { roles } = await getAuth();
+
   return (
     <ContentLayout>
-      <Suspense fallback={<div>Loading...</div>}>Dashboard</Suspense>
+      <Suspense fallback={<Loader />}>
+        <DashboardView roles={roles} />
+      </Suspense>
     </ContentLayout>
   );
 };

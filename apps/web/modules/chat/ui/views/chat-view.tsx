@@ -1,26 +1,21 @@
 "use client";
 
-import useInitializeChatClient from "@/hooks/use-initialize-chat-client";
 import { Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
-import {
-  Channel,
-  Chat,
-  ChatView as ChatPageView,
-  Thread,
-  ThreadList,
-  useCreateChatClient,
-} from "stream-chat-react";
-import { useSidebar } from "@workspace/ui/components/sidebar";
+import { Chat } from "stream-chat-react";
 
 import "stream-chat-react/dist/css/v2/index.css";
-import { cn } from "@workspace/ui/lib/utils";
-import { useThemeContext } from "../../contex/theme";
+
+import { useInitializeChatClient } from "@/hooks/use-initialize-chat-client";
+import { Sidebar } from "../components/sidebar";
+import { useSidebar } from "@workspace/ui/components/sidebar";
+import { ChatChannel } from "../components/chat-channel";
 
 export const ChatView = () => {
   const { open, setOpen } = useSidebar();
+
   const chatClient = useInitializeChatClient();
-  const { themeClassName } = useThemeContext();
+  const { resolvedTheme } = useTheme();
 
   if (!chatClient) {
     return (
@@ -29,41 +24,21 @@ export const ChatView = () => {
       </div>
     );
   }
-
   return (
-    <Chat client={chatClient} theme={cn("messaging", themeClassName)}>
-      <ChatPageView>
-        <ChatPageView.Selector />
-        <ChatPageView.Channels>
-          {/* <MessagingSidebar
-            channelListOptions={channelListOptions}
-            onClick={toggleMobile}
-            onCreateChannel={() => setIsCreating(!isCreating)}
-            onPreviewSelect={() => setIsCreating(false)}
-          />
-          <Channel
-            SendButton={SendButton}
-            ThreadHeader={MessagingThreadHeader}
-            TypingIndicator={noop}
-            EmojiPicker={EmojiPickerWithTheme}
-            emojiSearchIndex={SearchIndex}
-          >
-            {isCreating && (
-              <CreateChannel
-                toggleMobile={toggleMobile}
-                onClose={() => setIsCreating(false)}
-              />
-            )}
-            <ChannelInner theme={themeClassName} toggleMobile={toggleMobile} />
-          </Channel> */}
-        </ChatPageView.Channels>
-        <ChatPageView.Threads>
-          <ThreadList />
-          <ChatPageView.ThreadAdapter>
-            <Thread virtualized />
-          </ChatPageView.ThreadAdapter>
-        </ChatPageView.Threads>
-      </ChatPageView>
-    </Chat>
+    <div className="relative w-full overflow-hidden rounded-2xl bg-card shadow-sm">
+      <div className="flex w-full h-full min-h-[80vh]">
+        <Chat
+          client={chatClient}
+          theme={
+            resolvedTheme === "dark"
+              ? "str-chat__theme-dark"
+              : "str-chat__theme-light"
+          }
+        >
+          <Sidebar open={open} onClose={() => setOpen(false)} />
+          <ChatChannel open={!open} openSidebar={() => setOpen(true)} />
+        </Chat>
+      </div>
+    </div>
   );
 };

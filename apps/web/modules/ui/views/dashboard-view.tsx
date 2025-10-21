@@ -1,28 +1,18 @@
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@workspace/ui/components/tabs";
-
 import { AdminDashboard } from "../components/admin-dashboard";
 import { AccountDashboard } from "../components/account-dashboard";
+import { ROLE } from "@workspace/utils/constant";
+import { ComputerOperatorDashboard } from "../components/computer-operator-dashboard";
 
-export const DashboardView = () => {
-  return (
-    <div className="space-y-6">
-      <Tabs defaultValue="account">
-        <TabsList className="w-full max-w-fit rounded-xs mb-2 bg-muted">
-          <TabsTrigger value="admin">Admin</TabsTrigger>
-          <TabsTrigger value="account">Account</TabsTrigger>
-        </TabsList>
-        <TabsContent value="admin">
-          <AdminDashboard />
-        </TabsContent>
-        <TabsContent value="account">
-          <AccountDashboard />
-        </TabsContent>
-    </Tabs>
-    </div>
-  );
+interface DashboardProps {
+  roles: string[];
+}
+
+export const DashboardView = ({ roles }: DashboardProps) => {
+  if (roles.includes(ROLE.Accountant)) {
+    return <AccountDashboard />;
+  } else if (roles.includes(ROLE["Computer Operator"])) {
+    return <ComputerOperatorDashboard />;
+  }
+
+  return <AdminDashboard />;
 };

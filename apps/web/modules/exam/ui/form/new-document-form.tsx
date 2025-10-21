@@ -51,7 +51,7 @@ export const NewDocumentForm = () => {
         queryClient.invalidateQueries(
           trpc.document.getMany.queryOptions({ ...filters })
         );
-        router.push("/exam/document");
+        router.push("/document");
       },
     })
   );
