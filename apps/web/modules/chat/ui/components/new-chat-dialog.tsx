@@ -37,13 +37,14 @@ export default function NewChatDialog({
   const searchInputDebounced = useDebounce(searchInput);
 
   const [selectedUsers, setSelectedUsers] = useState<UserResponse[]>([]);
+  // Exclude the logged-in user manually
 
   const { data, isFetching, isError, isSuccess } = useQuery({
     queryKey: ["stream-users", searchInputDebounced],
-    queryFn: async () => {
-      const response = await client.queryUsers(
+    queryFn: async () =>
+      client.queryUsers(
         {
-          role: { $eq: "user" }, // or omit admins by inclusion
+          role: { $eq: "user" },
           ...(searchInputDebounced
             ? {
                 $or: [
@@ -54,16 +55,11 @@ export default function NewChatDialog({
             : {}),
         },
         { name: 1, username: 1 },
-        { limit: 30 } // slightly higher to compensate for excluded self
-      );
-
-      // Exclude the logged-in user manually
-      const filtered = response.users.filter((u) => u.id !== session?.user?.id);
-
-      return filtered;
-    },
-    enabled: !!client && !!session?.user?.id,
+        { limit: 15 }
+      ),
   });
+
+  const filtered = data?.users.filter((u) => u.id !== session?.user?.id);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -142,8 +138,8 @@ export default function NewChatDialog({
           )}
           <hr />
           <div className="h-96 overflow-y-auto">
-            {isSuccess && data?.users && data.users.length > 0 ? (
-              data.users.map((user) => (
+            {isSuccess && filtered && filtered.length > 0 ? (
+              filtered.map((user) => (
                 <UserResult
                   key={user.id}
                   user={user}
