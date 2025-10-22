@@ -86,7 +86,7 @@ export const MobileFilter = () => {
       </DrawerTrigger>
       <DrawerContent className="p-4">
         <DrawerHeader>
-          <DrawerTitle />
+          <DrawerTitle>Filter</DrawerTitle>
         </DrawerHeader>
         <div className="flex items-center justify-between">
           <ResetFilter hasModified={hasAnyModified} handleReset={handleClear} />
@@ -115,7 +115,7 @@ export const MobileFilter = () => {
             showInMobile
           />
           <FilterSelect
-            value={filter.limit.toString()}
+            value=""
             onChange={handleLimitChange}
             placeholder="Limit"
             options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({

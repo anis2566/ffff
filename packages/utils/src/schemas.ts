@@ -21,6 +21,7 @@ export const ClassNameSchema = z.object({
   name: requiredString,
   level: requiredString,
   position: requiredString,
+  session: requiredString,
 });
 
 export type ClassNameSchemaType = z.infer<typeof ClassNameSchema>;
@@ -73,7 +74,7 @@ export const StudentSchema = z.object({
   nationality: requiredString,
   religion: requiredString,
   imageUrl: z.string().optional(),
-  school: requiredString,
+  instituteId: requiredString,
   classNameId: requiredString,
   section: z.string().optional(),
   shift: z.string().optional(),

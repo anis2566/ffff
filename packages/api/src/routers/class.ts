@@ -9,17 +9,24 @@ export const classRouter = {
   createOne: permissionProcedure("class", "create")
     .input(ClassNameSchema)
     .mutation(async ({ ctx, input }) => {
-      const { name, level, position } = input;
+      const { name, level, position, session } = input;
 
       try {
         const existingClass = await ctx.db.className.findFirst({
           where: {
-            OR: [
+            AND: [
               {
-                name,
+                session,
               },
               {
-                position: parseInt(position),
+                OR: [
+                  {
+                    name,
+                  },
+                  {
+                    position: parseInt(position),
+                  },
+                ],
               },
             ],
           },
@@ -37,26 +44,7 @@ export const classRouter = {
             name,
             level,
             position: parseInt(position),
-          },
-        });
-
-        // Find accountant user
-        const accountUser = await ctx.db.user.findFirst({
-          where: {
-            roles: {
-              some: {
-                name: "Accountant",
-              },
-            },
-          },
-          select: {
-            id: true,
-            name: true,
-            fcmTokens: {
-              where: {
-                isActive: true,
-              },
-            },
+            session,
           },
         });
 
@@ -78,11 +66,12 @@ export const classRouter = {
       })
     )
     .mutation(async ({ ctx, input }) => {
-      const { classId, name, level, position } = input;
+      const { classId, name, level, position, session } = input;
 
       try {
         const existingClass = await ctx.db.className.findFirst({
           where: {
+            session,
             id: classId,
           },
         });
@@ -94,6 +83,7 @@ export const classRouter = {
         if (parseInt(position) !== existingClass.position) {
           const existingPosition = await ctx.db.className.findFirst({
             where: {
+              session,
               position: parseInt(position),
             },
           });
@@ -111,6 +101,7 @@ export const classRouter = {
             id: classId,
           },
           data: {
+            session,
             name,
             level,
             position: parseInt(position),
@@ -201,6 +192,18 @@ export const classRouter = {
             ...(level && {
               level,
             }),
+          },
+          include: {
+            Batches: {
+              select: {
+                id: true,
+              },
+            },
+            students: {
+              select: {
+                id: true,
+              },
+            },
           },
           orderBy: {
             createdAt: sort === "asc" ? "asc" : "desc",

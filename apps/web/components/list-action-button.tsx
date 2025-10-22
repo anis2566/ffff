@@ -9,6 +9,7 @@ interface ListActionButtonProps {
   onClick: () => void;
   title: string;
   isDanger?: boolean;
+  hasPermission?: boolean;
 }
 
 export const ListActionButton = ({
@@ -16,7 +17,10 @@ export const ListActionButton = ({
   onClick,
   title,
   isDanger = false,
+  hasPermission = true,
 }: ListActionButtonProps) => {
+  if (!hasPermission) return null;
+
   return (
     <>
       {isDanger && <Separator />}

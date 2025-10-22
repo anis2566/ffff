@@ -4,6 +4,7 @@ import { SidebarTrigger } from "@workspace/ui/components/sidebar";
 import { SidebarBreadcrumb } from "./sidebar-breadcrumb";
 import { UserNav } from "./nav-user";
 import { Notifications } from "@/components/notifications";
+import { Messages } from "@/components/messages";
 
 interface Props {
   children: React.ReactNode;
@@ -20,6 +21,7 @@ export const ContentLayout = ({ children }: Props) => {
         <div className="flex items-center gap-x-3">
           <ModeToggle />
           <Notifications />
+          <Messages />
           <UserNav />
         </div>
       </div>

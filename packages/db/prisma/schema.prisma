@@ -25,12 +25,12 @@ model User {
   roleIds String[] @db.ObjectId
   roles   Role[]   @relation(fields: [roleIds], references: [id])
 
-  accounts          Account[]
-  sessions          Session[]
-  documents         Document[]
-  fcmTokens         FcmToken[]
-  notifications     Notification[]
-  todos             Todo[]
+  accounts      Account[]
+  sessions      Session[]
+  documents     Document[]
+  fcmTokens     FcmToken[]
+  notifications Notification[]
+  todos         Todo[]
 
   sentNotifications Notification[] @relation("SentBy")
 
@@ -179,7 +179,9 @@ model Notification {
 }
 
 model ClassName {
-  id       String @id @default(auto()) @map("_id") @db.ObjectId
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  session String
+
   name     String @unique
   level    String
   position Int    @default(0)
@@ -198,6 +200,8 @@ model ClassName {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([session, name])
 }
 
 model Subject {
@@ -255,6 +259,8 @@ model Institute {
   type String
   name String
 
+  students Student[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -273,7 +279,6 @@ model Student {
   religion    String
   imageUrl    String?
 
-  school  String
   section String?
   shift   String?
   group   String?
@@ -296,8 +301,11 @@ model Student {
   salaryFee    Int
   courseFee    Int?
 
+  instituteId String    @db.ObjectId
+  institute   Institute @relation(fields: [instituteId], references: [id], onDelete: Restrict)
+
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   batchId String? @db.ObjectId
   batch   Batch?  @relation(fields: [batchId], references: [id], onDelete: SetNull)

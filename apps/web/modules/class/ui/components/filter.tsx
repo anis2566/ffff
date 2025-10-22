@@ -61,7 +61,7 @@ export const Filter = () => {
           className="max-w-[100px]"
         />
         <FilterSelect
-          value={filter.limit.toString()}
+          value=""
           onChange={(value: string) => setFilter({ limit: parseInt(value) })}
           placeholder="Limit"
           options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({

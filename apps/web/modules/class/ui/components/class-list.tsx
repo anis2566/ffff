@@ -16,14 +16,25 @@ import {
 import { ListActionButton } from "@/components/list-action-button";
 
 import { useDeleteClass, useEditClass } from "@/hooks/use-class";
+import { usePermissions } from "@/hooks/use-user-permission";
+
+interface ClassNameWithRelation extends ClassName {
+  Batches: {
+    id: string;
+  }[];
+  students: {
+    id: string;
+  }[];
+}
 
 interface ClassListProps {
-  classes: ClassName[];
+  classes: ClassNameWithRelation[];
 }
 
 export const ClassList = ({ classes }: ClassListProps) => {
   const { onOpen } = useDeleteClass();
   const { onOpen: onEdit } = useEditClass();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -31,16 +42,18 @@ export const ClassList = ({ classes }: ClassListProps) => {
         <TableRow className="bg-background/60">
           <TableHead>Name</TableHead>
           <TableHead>Level</TableHead>
-          <TableHead>Position</TableHead>
+          <TableHead>Batches</TableHead>
+          <TableHead>Students</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {classes.map((classItem) => (
-          <TableRow key={classItem.id}>
+          <TableRow key={classItem.id} className="even:bg-muted">
             <TableCell>{classItem.name}</TableCell>
             <TableCell>{classItem.level}</TableCell>
-            <TableCell>{classItem.position}</TableCell>
+            <TableCell>{classItem.Batches.length}</TableCell>
+            <TableCell>{classItem.students.length}</TableCell>
             <TableCell>
               <ListActions>
                 <ListActionButton
@@ -54,12 +67,14 @@ export const ClassList = ({ classes }: ClassListProps) => {
                       classItem.position.toString()
                     )
                   }
+                  hasPermission={hasPermission("class", "update")}
                 />
                 <ListActionButton
                   title="Delete"
                   icon={Trash2}
                   isDanger
                   onClick={() => onOpen(classItem.id)}
+                  hasPermission={hasPermission("class", "delete")}
                 />
               </ListActions>
             </TableCell>

@@ -1,3 +1,5 @@
+import { getYear } from "date-fns";
+
 export enum LEVELS {
   Primary = "Primary",
   Secondary = "Secondary",
@@ -202,22 +204,30 @@ export const StudentDeactivationReasons = [
   "Other",
 ];
 
-export const Session = [
+const currentYear = getYear(new Date());
+
+export const Session = Array.from({ length: 4 }, (_, i) => {
+  const year = currentYear - 2 + i;
+  return [
+    {
+      label: year.toString(),
+      value: year.toString(),
+    },
+    {
+      label: `${year}-${year + 1}`,
+      value: `${year}-${year + 1}`,
+    },
+  ];
+}).flat();
+
+export const currentSession = [
   {
-    label: "2024",
-    value: "2024",
+    label: currentYear.toString(),
+    value: currentYear.toString(),
   },
   {
-    label: "2025",
-    value: "2025",
-  },
-  {
-    label: "2026",
-    value: "2026",
-  },
-  {
-    label: "2027",
-    value: "2027",
+    label: `${currentYear}-${currentYear + 1}`,
+    value: `${currentYear}-${currentYear + 1}`,
   },
 ];
 
