@@ -34,16 +34,19 @@ export async function POST(req: NextRequest) {
 
       if (chatUsers.length > 0) {
         for (const user of chatUsers) {
-          void triggerNotification({
-              identifier: "new_message",
-              recipients: [user.user.id],
-              data: {
-                messageSender: event.members.find(member => member.user.id === event.message.user.id)?.user.name,
-                message: event.message.text,
-                actionUrl: "/chat",
-                isOnline: event.members.find(member => member.user.id === event.message.user.id)?.user.online.toString(),
-              }
-          })
+            console.log("Message Sender", event.members.find(member => member.user.id === event.message.user.id)?.user.name)
+            console.log("Message", event.message.text)
+            console.log("is Online", event.members.find(member => member.user.id === event.message.user.id)?.user.online.toString())
+        //   void triggerNotification({
+        //       identifier: "new_message",
+        //       recipients: [user.user.id],
+        //       data: {
+        //         messageSender: event.members.find(member => member.user.id === event.message.user.id)?.user.name,
+        //         message: event.message.text,
+        //         actionUrl: "/chat",
+        //         isOnline: event.members.find(member => member.user.id === event.message.user.id)?.user.online.toString(),
+        //       }
+        //   })
         }
       }
     }
