@@ -1,14 +1,12 @@
 
-
-import { env } from "@/env";
 import { NextRequest, NextResponse } from "next/server";
 import { StreamChat } from "stream-chat";
 
 // Initialize the Stream client (server-side)
 // Ensure these environment variables are set in your .env.local
 const streamClient = StreamChat.getInstance(
-  env.NEXT_PUBLIC_GETSTREAM_API_KEY,
-  env.GETSTREAM_API_SECRET
+  process.env.NEXT_PUBLIC_GETSTREAM_API_KEY!,
+  process.env.GETSTREAM_API_SECRET!
 );
 
 export async function POST(req: NextRequest) {
