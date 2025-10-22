@@ -3,6 +3,8 @@ import { StreamMessageNewEvent } from "@/lib/stream-push-event-type";
 import { NextRequest, NextResponse } from "next/server";
 import { StreamChat } from "stream-chat";
 
+import { triggerNotification } from "@workspace/api/notification";
+
 const streamClient = StreamChat.getInstance(
   process.env.NEXT_PUBLIC_GETSTREAM_API_KEY!,
   process.env.GETSTREAM_API_SECRET!
@@ -28,8 +30,21 @@ export async function POST(req: NextRequest) {
 
     // Example: For message.new event
     if (event.type === "message.new") {
-        const isUserOnline = event.message.user.online;
-        console.log(event.members)
+      const chatUsers = event.members.filter(member => member.user.id !== event.message.user.id)
+
+      if (chatUsers.length > 0) {
+        for (const user of chatUsers) {
+          void triggerNotification({
+              identifier: "new_message",
+              recipients: [user.user.id],
+              data: {
+                messageSender: event.members.find(member => member.user.id === event.message.user.id)?.user.name,
+                message: event.message.text,
+                actionUrl: "/chat"
+              }
+          })
+        }
+      }
     }
 
     // You can also handle message.read etc
