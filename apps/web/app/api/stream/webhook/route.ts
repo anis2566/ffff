@@ -40,7 +40,8 @@ export async function POST(req: NextRequest) {
               data: {
                 messageSender: event.members.find(member => member.user.id === event.message.user.id)?.user.name,
                 message: event.message.text,
-                actionUrl: "/chat"
+                actionUrl: "/chat",
+                isOnline: event.members.find(member => member.user.id === event.message.user.id)?.user.online
               }
           })
         }
