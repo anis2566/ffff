@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
                 messageSender: event.members.find(member => member.user.id === event.message.user.id)?.user.name,
                 message: event.message.text,
                 actionUrl: "/chat",
-                isOnline: event.members.find(member => member.user.id === event.message.user.id)?.user.online
+                isOnline: event.members.find(member => member.user.id === event.message.user.id)?.user.online.toString(),
               }
           })
         }
