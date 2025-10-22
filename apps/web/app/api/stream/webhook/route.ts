@@ -29,8 +29,7 @@ export async function POST(req: NextRequest) {
     // Example: For message.new event
     if (event.type === "message.new") {
         const isUserOnline = event.message.user.online;
-        console.log(isUserOnline);
-        console.log(event)
+        console.log(event.members)
     }
 
     // You can also handle message.read etc
