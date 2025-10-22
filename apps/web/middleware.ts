@@ -38,11 +38,12 @@ export const config = {
      * Match all request paths except:
      * - api/auth/* (Better Auth routes)
      * - api/trpc/* (tRPC routes)
+     * - api/stream/webhook (Stream Webhook route)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      * - public files (images, etc)
      */
-    "/((?!api/auth|api/trpc|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/auth|api/trpc|api/stream/webhook|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
