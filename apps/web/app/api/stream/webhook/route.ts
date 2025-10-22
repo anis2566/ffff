@@ -36,6 +36,9 @@ export async function POST(req: NextRequest) {
 
       if (chatUsers.length > 0) {
         for (const user of chatUsers) {
+            console.log("Is Online", event.members
+                .find((member) => member.user.id === user.user_id)
+                ?.user.online.toString())
           void triggerNotification({
             identifier: "new_message",
             recipients: [user.user.id],
