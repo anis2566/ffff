@@ -221,14 +221,8 @@ export const Session = Array.from({ length: 4 }, (_, i) => {
 }).flat();
 
 export const currentSession = [
-  {
-    label: currentYear.toString(),
-    value: currentYear.toString(),
-  },
-  {
-    label: `${currentYear}-${currentYear + 1}`,
-    value: `${currentYear}-${currentYear + 1}`,
-  },
+  currentYear.toString(),
+  `${currentYear}-${currentYear + 1}`,
 ];
 
 export const timeSlots = [

@@ -1,41 +1,53 @@
 import type { TRPCRouterRecord } from "@trpc/server";
+import type { Prisma } from "@workspace/db";
 import z from "zod";
 
 import { permissionProcedure, protectedProcedure } from "../trpc";
 
 import { ClassNameSchema } from "@workspace/utils/schemas";
+import { currentSession } from "@workspace/utils/constant";
+
+// Shared error handler
+const handleError = (error: unknown, operation: string) => {
+  console.error(`Error ${operation}:`, error);
+  return { success: false, message: "Internal server error" };
+};
+
+// Reusable where clause builder for session filtering
+const buildSessionFilter = (
+  session?: string | null
+): Prisma.ClassNameWhereInput =>
+  session ? { session } : { session: { in: currentSession } };
+
+// Build search filter with proper typing
+const buildSearchFilter = (
+  search?: string | null
+): Prisma.ClassNameWhereInput =>
+  search ? { name: { contains: search, mode: "insensitive" as const } } : {};
 
 export const classRouter = {
   createOne: permissionProcedure("class", "create")
     .input(ClassNameSchema)
     .mutation(async ({ ctx, input }) => {
       const { name, level, position, session } = input;
+      const positionInt = parseInt(position);
 
       try {
+        // Check for duplicate name or position in a single query
         const existingClass = await ctx.db.className.findFirst({
           where: {
-            AND: [
-              {
-                session,
-              },
-              {
-                OR: [
-                  {
-                    name,
-                  },
-                  {
-                    position: parseInt(position),
-                  },
-                ],
-              },
-            ],
+            session,
+            OR: [{ name }, { position: positionInt }],
           },
+          select: { id: true, name: true, position: true },
         });
 
         if (existingClass) {
+          const conflictType =
+            existingClass.name === name ? "name" : "position";
           return {
             success: false,
-            message: "Class or position already exists",
+            message: `Class ${conflictType} already exists`,
           };
         }
 
@@ -43,7 +55,7 @@ export const classRouter = {
           data: {
             name,
             level,
-            position: parseInt(position),
+            position: positionInt,
             session,
           },
         });
@@ -54,10 +66,10 @@ export const classRouter = {
           data: newClass,
         };
       } catch (error) {
-        console.error("Error creating class:", error);
-        return { success: false, message: "Internal server error" };
+        return handleError(error, "creating class");
       }
     }),
+
   updateOne: permissionProcedure("class", "update")
     .input(
       z.object({
@@ -67,70 +79,72 @@ export const classRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       const { classId, name, level, position, session } = input;
+      const positionInt = parseInt(position);
 
       try {
-        const existingClass = await ctx.db.className.findFirst({
-          where: {
-            session,
-            id: classId,
-          },
-        });
+        // Fetch existing class and check for position conflict in parallel
+        const [existingClass, positionConflict] = await Promise.all([
+          ctx.db.className.findUnique({
+            where: { id: classId },
+            select: { id: true, position: true },
+          }),
+          ctx.db.className.findFirst({
+            where: {
+              session,
+              position: positionInt,
+              id: { not: classId },
+            },
+            select: { id: true },
+          }),
+        ]);
 
         if (!existingClass) {
           return { success: false, message: "Class not found" };
         }
 
-        if (parseInt(position) !== existingClass.position) {
-          const existingPosition = await ctx.db.className.findFirst({
-            where: {
-              session,
-              position: parseInt(position),
-            },
-          });
-
-          if (existingPosition) {
-            return {
-              success: false,
-              message: "Position already exists",
-            };
-          }
+        if (positionConflict) {
+          return {
+            success: false,
+            message: "Position already exists",
+          };
         }
 
         await ctx.db.className.update({
-          where: {
-            id: classId,
-          },
+          where: { id: classId },
           data: {
             session,
             name,
             level,
-            position: parseInt(position),
+            position: positionInt,
           },
         });
 
-        return { success: true, message: "Class updated" };
+        return { success: true, message: "Class updated successfully" };
       } catch (error) {
-        console.error("Error updating class:", error);
-        return { success: false, message: "Internal server error" };
+        return handleError(error, "updating class");
       }
     }),
+
   forSelect: protectedProcedure
     .input(
       z.object({
         search: z.string().nullish(),
+        session: z.string().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const { search } = input;
+      const { search, session } = input;
 
       const classes = await ctx.db.className.findMany({
         where: {
-          ...(search && {
-            name: {
-              contains: search,
-              mode: "insensitive",
-            },
-          }),
+          ...buildSessionFilter(session),
+          ...buildSearchFilter(search),
+        },
+        select: {
+          id: true,
+          name: true,
+          level: true,
+          position: true,
         },
         orderBy: {
           position: "asc",
@@ -139,69 +153,68 @@ export const classRouter = {
 
       return classes;
     }),
+
   deleteOne: permissionProcedure("class", "delete")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
       const { id } = input;
 
       try {
-        const existingClass = await ctx.db.className.findFirst({
-          where: {
-            id,
-          },
+        // Use delete directly - Prisma will throw if not found
+        await ctx.db.className.delete({
+          where: { id },
         });
 
-        if (!existingClass) {
+        return { success: true, message: "Class deleted successfully" };
+      } catch (error) {
+        // Check if it's a record not found error
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "P2025"
+        ) {
           return { success: false, message: "Class not found" };
         }
-
-        await ctx.db.className.delete({
-          where: {
-            id,
-          },
-        });
-
-        return { success: true, message: "Class deleted" };
-      } catch (error) {
-        console.error("Error deleting class:", error);
-        return { success: false, message: "Internal server error" };
+        return handleError(error, "deleting class");
       }
     }),
+
   getAll: permissionProcedure("class", "read")
     .input(
       z.object({
-        page: z.number(),
-        limit: z.number().min(1).max(100),
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(10),
         sort: z.string().nullish(),
+        session: z.string().nullish(),
         search: z.string().nullish(),
         level: z.string().nullish(),
       })
     )
     .query(async ({ ctx, input }) => {
-      const { page, limit, sort, search, level } = input;
+      const { page, limit, sort, search, level, session } = input;
+
+      const where: Prisma.ClassNameWhereInput = {
+        ...buildSessionFilter(session),
+        ...buildSearchFilter(search),
+        ...(level && { level }),
+      };
 
       const [classes, totalCount] = await Promise.all([
         ctx.db.className.findMany({
-          where: {
-            ...(search && {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
-            }),
-            ...(level && {
-              level,
-            }),
-          },
-          include: {
-            Batches: {
+          where,
+          select: {
+            id: true,
+            name: true,
+            level: true,
+            position: true,
+            session: true,
+            createdAt: true,
+            updatedAt: true,
+            _count: {
               select: {
-                id: true,
-              },
-            },
-            students: {
-              select: {
-                id: true,
+                batches: true,
+                students: true,
               },
             },
           },
@@ -211,24 +224,14 @@ export const classRouter = {
           take: limit,
           skip: (page - 1) * limit,
         }),
-        ctx.db.className.count({
-          where: {
-            ...(search && {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
-            }),
-            ...(level && {
-              level,
-            }),
-          },
-        }),
+        ctx.db.className.count({ where }),
       ]);
 
       return {
         classes,
         totalCount,
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
       };
     }),
 } satisfies TRPCRouterRecord;

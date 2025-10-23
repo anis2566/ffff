@@ -6,6 +6,7 @@ import {
   DEFAULT_PAGE_SIZE_OPTIONS,
   DEFAULT_SORT_OPTIONS,
   LEVELS,
+  Session,
 } from "@workspace/utils/constant";
 
 import { FilterInput } from "@workspace/ui/shared/filter-input";
@@ -14,26 +15,77 @@ import { ResetFilter } from "@workspace/ui/shared/reset-filter";
 
 import { useGetClasses } from "../../filters/use-get-classes";
 import { MobileFilter } from "./mobile-filter";
+import { useMemo, useCallback } from "react";
+
+// Pre-compute static options outside component
+const LEVEL_OPTIONS = Object.values(LEVELS).map((v) => ({
+  label: v,
+  value: v,
+}));
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
 
 export const Filter = () => {
   const [filter, setFilter] = useGetClasses();
 
-  const hasAnyModified =
-    !!filter.search ||
-    filter.limit !== 5 ||
-    filter.page !== 1 ||
-    filter.sort !== "" ||
-    filter.level !== "";
+  // Memoize the hasAnyModified check
+  const hasAnyModified = useMemo(
+    () =>
+      !!filter.search ||
+      filter.limit !== DEFAULT_PAGE_SIZE ||
+      filter.page !== DEFAULT_PAGE ||
+      !!filter.sort ||
+      !!filter.level ||
+      !!filter.session,
+    [
+      filter.search,
+      filter.limit,
+      filter.page,
+      filter.sort,
+      filter.level,
+      filter.session,
+    ]
+  );
 
-  const handleClear = () => {
+  // Memoize handlers
+  const handleClear = useCallback(() => {
     setFilter({
       search: "",
       limit: DEFAULT_PAGE_SIZE,
       page: DEFAULT_PAGE,
       sort: "",
       level: "",
+      session: "",
     });
-  };
+  }, [setFilter]);
+
+  const handleSearchChange = useCallback(
+    (value: string) => setFilter({ search: value }),
+    [setFilter]
+  );
+
+  const handleLevelChange = useCallback(
+    (value: string) => setFilter({ level: value }),
+    [setFilter]
+  );
+
+  const handleSessionChange = useCallback(
+    (value: string) => setFilter({ session: value }),
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    (value: string) => setFilter({ sort: value }),
+    [setFilter]
+  );
+
+  const handleLimitChange = useCallback(
+    (value: string) => setFilter({ limit: parseInt(value, 10) }),
+    [setFilter]
+  );
 
   return (
     <div className="flex-1 flex items-center justify-between gap-x-3">
@@ -42,32 +94,36 @@ export const Filter = () => {
           type="search"
           placeholder="search..."
           value={filter.search}
-          onChange={(value: string) => setFilter({ search: value })}
+          onChange={handleSearchChange}
           showInMobile
           className="max-w-sm"
         />
         <FilterSelect
           value={filter.level}
-          onChange={(value: string) => setFilter({ level: value })}
+          onChange={handleLevelChange}
           placeholder="Level"
-          options={Object.values(LEVELS).map((v) => ({ label: v, value: v }))}
+          options={LEVEL_OPTIONS}
+          className="max-w-[100px]"
+        />
+        <FilterSelect
+          value={filter.session}
+          onChange={handleSessionChange}
+          placeholder="Session"
+          options={Session}
           className="max-w-[100px]"
         />
         <FilterSelect
           value={filter.sort}
-          onChange={(value: string) => setFilter({ sort: value })}
+          onChange={handleSortChange}
           placeholder="Sort"
-          options={Object.values(DEFAULT_SORT_OPTIONS)}
+          options={SORT_OPTIONS}
           className="max-w-[100px]"
         />
         <FilterSelect
-          value=""
-          onChange={(value: string) => setFilter({ limit: parseInt(value) })}
+          value={filter.limit.toString()}
+          onChange={handleLimitChange}
           placeholder="Limit"
-          options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-            label: v.toString(),
-            value: v.toString(),
-          }))}
+          options={PAGE_SIZE_OPTIONS}
           className="max-w-[100px]"
         />
       </div>

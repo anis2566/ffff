@@ -15,11 +15,13 @@ export const useCreateClass = create<CreateClassState>((set) => ({
 interface EditClassState {
   isOpen: boolean;
   classId: string;
+  session: string;
   name: string;
   level: string;
   position: string;
   onOpen: (
     classId: string,
+    session: string,
     name: string,
     level: string,
     position: string
@@ -30,13 +32,14 @@ interface EditClassState {
 export const useEditClass = create<EditClassState>((set) => ({
   isOpen: false,
   classId: "",
+  session: "",
   name: "",
   level: "",
   position: "",
-  onOpen: (classId, name, level, position) =>
-    set({ isOpen: true, classId, name, level, position }),
+  onOpen: (classId, session, name, level, position) =>
+    set({ isOpen: true, classId, session, name, level, position }),
   onClose: () =>
-    set({ isOpen: false, classId: "", name: "", level: "", position: "" }),
+    set({ isOpen: false, classId: "", session: "", name: "", level: "", position: "" }),
 }));
 
 interface DeleteClassState {

@@ -1,6 +1,8 @@
-import { FieldValues, Path, Controller } from "react-hook-form";
+import { FieldValues, Path, UseFormReturn } from "react-hook-form";
+import { ComponentProps } from "react";
 
 import {
+  FormField,
   FormItem,
   FormLabel,
   FormControl,
@@ -14,17 +16,27 @@ import {
   SelectValue,
 } from "../components/select";
 
-interface FormInputProps<T extends FieldValues> {
-  form: any;
+interface SelectOption {
+  label: string;
+  value: string;
+  disabled?: boolean;
+}
+
+interface FormSelectProps<T extends FieldValues> {
+  form: UseFormReturn<T>;
   name: Path<T>;
   label: string;
-  disabled?: boolean;
   placeholder: string;
-  options: {
-    label: string;
-    value: string;
-  }[];
-  onClick?: (option: string) => void;
+  options: SelectOption[];
+  disabled?: boolean;
+  onValueChange?: (value: string) => void;
+  className?: string;
+  triggerClassName?: string;
+  contentClassName?: string;
+  selectProps?: Omit<
+    ComponentProps<typeof Select>,
+    "onValueChange" | "defaultValue" | "disabled" | "value"
+  >;
 }
 
 export function FormSelect<T extends FieldValues>({
@@ -34,42 +46,46 @@ export function FormSelect<T extends FieldValues>({
   placeholder,
   options,
   disabled = false,
-  onClick,
-}: FormInputProps<T>) {
+  onValueChange,
+  className,
+  triggerClassName,
+  contentClassName,
+  selectProps,
+}: FormSelectProps<T>) {
   return (
-    <Controller
+    <FormField
       control={form.control}
       name={name}
-      render={({ field, fieldState }) => (
-        <FormItem>
+      render={({ field }) => (
+        <FormItem className={className}>
           <FormLabel>{label}</FormLabel>
           <Select
-            onValueChange={value => {
+            onValueChange={(value) => {
               field.onChange(value);
-              onClick?.(value);
+              onValueChange?.(value);
             }}
-            defaultValue={field.value}
-            disabled={disabled}
             value={field.value}
+            disabled={disabled}
+            {...selectProps}
           >
             <FormControl>
-              <SelectTrigger className="w-full rounded-xs shadow-none dark:bg-background dark:hover:bg-background">
+              <SelectTrigger className={triggerClassName}>
                 <SelectValue placeholder={placeholder} />
               </SelectTrigger>
             </FormControl>
-            <SelectContent className="rounded-xs">
+            <SelectContent className={contentClassName}>
               {options.map((option) => (
                 <SelectItem
                   key={option.value}
                   value={option.value}
-                  className="rounded-xs"
+                  disabled={option.disabled}
                 >
                   {option.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <FormMessage>{fieldState.error?.message}</FormMessage>
+          <FormMessage />
         </FormItem>
       )}
     />

@@ -24,110 +24,137 @@ import {
 } from "@workspace/ui/shared/loadign-button";
 
 import { ClassNameSchema, ClassNameSchemaType } from "@workspace/utils/schemas";
-import { LEVELS } from "@workspace/utils/constant";
+import { LEVELS, Session } from "@workspace/utils/constant";
 
 import { useEditClass } from "@/hooks/use-class";
 import { useGetClasses } from "../../filters/use-get-classes";
 
+const LEVEL_OPTIONS = Object.values(LEVELS).map((level) => ({
+  label: level,
+  value: level,
+}));
+
 export const EditClassModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
-  const { isOpen, onClose, classId, name, level, position } = useEditClass();
+  const { isOpen, onClose, classId, session, name, level, position } =
+    useEditClass();
   const trpc = useTRPC();
   const [filters] = useGetClasses();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    form.setValue("name", name);
-    form.setValue("level", level);
-    form.setValue("position", position);
-  }, [name, level, position]);
-
-  const { mutate: updateClass, isPending } = useMutation(
-    trpc.class.updateOne.mutationOptions({
-      onError: (err) => {
-        setErrorText(err.message);
-        setButtonState("error");
-        toast.error(err.message);
-      },
-      onSuccess: async (data) => {
-        if (!data.success) {
-          setButtonState("error");
-          setErrorText(data.message);
-          toast.error(data.message);
-          return;
-        }
-        setButtonState("success");
-        toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.class.getAll.queryOptions({ ...filters })
-        );
-        onClose();
-      },
-    })
-  );
-
   const form = useForm<ClassNameSchemaType>({
     resolver: zodResolver(ClassNameSchema),
     defaultValues: {
+      session: "",
       name: "",
       level: "",
       position: "",
     },
   });
 
-  const onSubmit = (data: ClassNameSchemaType) => {
-    setButtonState("loading");
+  // Update form values when modal opens with class data
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        session,
+        name,
+        level,
+        position,
+      });
+    }
+  }, [isOpen, session, name, level, position, form]);
+
+  const { mutate: updateClass } = useMutation(
+    trpc.class.updateOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
+      onError: (err) => {
+        setButtonState("error");
+        toast.error(err.message);
+      },
+      onSuccess: async (data) => {
+        if (!data.success) {
+          setButtonState("error");
+          toast.error(data.message);
+          return;
+        }
+
+        setButtonState("success");
+        toast.success(data.message);
+
+        await queryClient.invalidateQueries(
+          trpc.class.getAll.queryOptions({ ...filters })
+        );
+
+        onClose();
+      },
+    })
+  );
+
+  const handleSubmit = (data: ClassNameSchemaType) => {
     updateClass({
       ...data,
       classId,
     });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Class</DialogTitle>
           <DialogDescription>
-            Make changes to your class details. Do not forget to save when you
-            are done.
+            Make changes to your class details. Click save when you are done.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
+            <FormSelect
+              form={form}
+              name="session"
+              label="Session"
+              placeholder="Select session"
+              options={Session}
+              triggerClassName="w-full"
+            />
+
             <FormInput
               form={form}
               name="name"
               label="Name"
-              disabled={isPending}
-              type="text"
+              placeholder="Enter class name"
             />
+
             <FormSelect
               form={form}
               name="level"
               label="Level"
               placeholder="Select level"
-              disabled={isPending}
-              options={Object.values(LEVELS).map((level) => ({
-                label: level,
-                value: level,
-              }))}
+              options={LEVEL_OPTIONS}
+              triggerClassName="w-full"
             />
+
             <FormInput
               form={form}
               name="position"
               label="Position"
-              disabled={isPending}
+              placeholder="Enter position number"
               type="number"
             />
+
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Updating..."
-              successText="Updated!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

@@ -40,7 +40,9 @@ export const documentRouter = {
           void triggerNotification({
             identifier: "new_document",
             recipients: [userId],
-            data: {},
+            data: {
+              isOnline: "true",
+            },
           });
         }
 

@@ -1,6 +1,8 @@
-import { FieldValues, Path, Controller } from "react-hook-form";
+import { FieldValues, Path, UseFormReturn } from "react-hook-form";
+import { ComponentProps } from "react";
 
 import {
+  FormField,
   FormItem,
   FormLabel,
   FormControl,
@@ -9,12 +11,24 @@ import {
 import { Input } from "../components/input";
 
 interface FormInputProps<T extends FieldValues> {
-  form: any;
+  form: UseFormReturn<T>;
   name: Path<T>;
   label: string;
-  type?: "text" | "number" | "email" | "password";
+  type?: ComponentProps<"input">["type"];
   placeholder?: string;
   disabled?: boolean;
+  className?: string;
+  inputProps?: Omit<
+    ComponentProps<"input">,
+    | "name"
+    | "type"
+    | "placeholder"
+    | "disabled"
+    | "value"
+    | "onChange"
+    | "onBlur"
+    | "ref"
+  >;
 }
 
 export function FormInput<T extends FieldValues>({
@@ -24,24 +38,27 @@ export function FormInput<T extends FieldValues>({
   type = "text",
   placeholder,
   disabled = false,
+  className,
+  inputProps,
 }: FormInputProps<T>) {
   return (
-    <Controller
+    <FormField
       control={form.control}
       name={name}
-      render={({ field, fieldState }) => (
+      render={({ field }) => (
         <FormItem>
           <FormLabel>{label}</FormLabel>
           <FormControl>
             <Input
               {...field}
+              {...inputProps}
               type={type}
               placeholder={placeholder}
               disabled={disabled}
-              className="w-full bg-background dark:bg-background rounded-xs shadow-none"
+              className={className}
             />
           </FormControl>
-          <FormMessage>{fieldState.error?.message}</FormMessage>
+          <FormMessage />
         </FormItem>
       )}
     />

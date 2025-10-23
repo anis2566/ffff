@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useMemo, useCallback } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import {
@@ -10,7 +10,6 @@ import {
   PaginationItem,
 } from "../components/pagination";
 import { Button } from "../components/button";
-
 import { cn } from "../lib/utils";
 
 export interface MobilePaginationProps {
@@ -25,6 +24,29 @@ export interface MobilePaginationProps {
   paginationClassName?: string;
 }
 
+const PageButton = ({
+  page,
+  isActive,
+  onClick,
+  className,
+}: {
+  page: number;
+  isActive: boolean;
+  onClick: () => void;
+  className?: string;
+}) => (
+  <PaginationItem>
+    <Button
+      variant={isActive ? "default" : "outline"}
+      size="sm"
+      className={cn("rounded-full h-7 w-7", isActive && "mx-2", className)}
+      onClick={onClick}
+    >
+      {page}
+    </Button>
+  </PaginationItem>
+);
+
 export function MobilePagination({
   totalCount,
   currentPage,
@@ -35,112 +57,57 @@ export function MobilePagination({
   showWhenEmpty = false,
   paginationClassName = "w-[93%] py-1",
 }: MobilePaginationProps) {
-  const totalPageCount = Math.ceil(totalCount / pageSize);
+  const totalPageCount = useMemo(
+    () => Math.ceil(totalCount / pageSize),
+    [totalCount, pageSize]
+  );
+
+  const handlePageClick = useCallback(
+    (page: number) => () => onPageChange(page),
+    [onPageChange]
+  );
+
+  const handlePrevious = useCallback(() => {
+    if (currentPage > 1) {
+      onPageChange(currentPage - 1);
+    }
+  }, [currentPage, onPageChange]);
+
+  const handleNext = useCallback(() => {
+    if (currentPage < totalPageCount) {
+      onPageChange(currentPage + 1);
+    }
+  }, [currentPage, totalPageCount, onPageChange]);
+
+  const pageNumbers = useMemo(() => {
+    if (totalPageCount <= maxVisiblePages) {
+      return Array.from({ length: totalPageCount }, (_, i) => i + 1);
+    }
+
+    const pages: (number | "ellipsis-start" | "ellipsis-end")[] = [1];
+    const start = Math.max(2, currentPage - 1);
+    const end = Math.min(totalPageCount - 1, currentPage + 1);
+
+    if (currentPage > 3) {
+      pages.push("ellipsis-start");
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    if (currentPage < totalPageCount - 2) {
+      pages.push("ellipsis-end");
+    }
+
+    pages.push(totalPageCount);
+
+    return pages;
+  }, [totalPageCount, maxVisiblePages, currentPage]);
 
   if (totalPageCount === 0 || (!showWhenEmpty && totalCount === 0)) {
     return null;
   }
-
-  const renderPageNumbers = () => {
-    const items: ReactNode[] = [];
-
-    if (totalPageCount <= maxVisiblePages) {
-      for (let i = 1; i <= totalPageCount; i++) {
-        items.push(
-          <PaginationItem key={i}>
-            <Button
-              variant={currentPage === i ? "default" : "outline"}
-              size="sm"
-              className={cn(
-                "rounded-full h-7 w-7",
-                currentPage === i && "mx-2"
-              )}
-              onClick={() => onPageChange(i)}
-            >
-              {i}
-            </Button>
-          </PaginationItem>
-        );
-      }
-    } else {
-      items.push(
-        <PaginationItem key={1}>
-          <Button
-            variant={currentPage === 1 ? "default" : "outline"}
-            size="sm"
-            className={cn("rounded-full h-7 w-7", currentPage === 1 && "mx-2")}
-            onClick={() => onPageChange(1)}
-          >
-            1
-          </Button>
-        </PaginationItem>
-      );
-
-      if (currentPage > 3) {
-        items.push(
-          <PaginationItem key="ellipsis-start">
-            <PaginationEllipsis />
-          </PaginationItem>
-        );
-      }
-
-      const start = Math.max(2, currentPage - 1);
-      const end = Math.min(totalPageCount - 1, currentPage + 1);
-
-      for (let i = start; i <= end; i++) {
-        items.push(
-          <PaginationItem key={i}>
-            <Button
-              variant={currentPage === i ? "default" : "outline"}
-              size="sm"
-              className={cn(
-                "rounded-full h-7 w-7",
-                currentPage === i && "mx-2"
-              )}
-              onClick={() => onPageChange(i)}
-            >
-              {i}
-            </Button>
-          </PaginationItem>
-        );
-      }
-
-      if (currentPage < totalPageCount - 2) {
-        items.push(
-          <PaginationItem key="ellipsis-end">
-            <PaginationEllipsis />
-          </PaginationItem>
-        );
-      }
-
-      items.push(
-        <PaginationItem key={totalPageCount}>
-          <Button
-            variant={currentPage === totalPageCount ? "default" : "outline"}
-            size="sm"
-            className={cn("rounded-full h-7 w-7 mr-2")}
-            onClick={() => onPageChange(totalPageCount)}
-          >
-            {totalPageCount}
-          </Button>
-        </PaginationItem>
-      );
-    }
-
-    return items;
-  };
-
-  const handlePrevious = () => {
-    if (currentPage > 1) {
-      onPageChange(currentPage - 1);
-    }
-  };
-
-  const handleNext = () => {
-    if (currentPage < totalPageCount) {
-      onPageChange(currentPage + 1);
-    }
-  };
 
   return (
     <div
@@ -158,11 +125,28 @@ export function MobilePagination({
               size="icon"
               className="mr-1 h-7 w-7"
               onClick={handlePrevious}
+              aria-label="Previous page"
             >
               <ChevronLeft />
             </Button>
           </PaginationItem>
-          {renderPageNumbers()}
+
+          {pageNumbers.map((page) =>
+            typeof page === "number" ? (
+              <PageButton
+                key={page}
+                page={page}
+                isActive={currentPage === page}
+                onClick={handlePageClick(page)}
+                className={page === totalPageCount ? "mr-2" : undefined}
+              />
+            ) : (
+              <PaginationItem key={page}>
+                <PaginationEllipsis />
+              </PaginationItem>
+            )
+          )}
+
           <PaginationItem>
             <Button
               disabled={currentPage === totalPageCount}
@@ -170,6 +154,7 @@ export function MobilePagination({
               size="icon"
               className="ml-1 h-7 w-7"
               onClick={handleNext}
+              aria-label="Next page"
             >
               <ChevronRight />
             </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/react";
@@ -21,73 +21,75 @@ import {
 } from "@workspace/ui/shared/loadign-button";
 
 import { useDeleteClass } from "@/hooks/use-class";
-
 import { useGetClasses } from "../../filters/use-get-classes";
 
 export const DeleteClassModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, classId, onClose } = useDeleteClass();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-
   const [filters] = useGetClasses();
 
-  const { mutate: deleteClass, isPending } = useMutation(
+  const { mutate: deleteClass } = useMutation(
     trpc.class.deleteOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
+
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
+
+        await queryClient.invalidateQueries(
           trpc.class.getAll.queryOptions({ ...filters })
         );
+
         onClose();
       },
     })
   );
 
   const handleDelete = () => {
-    setButtonState("loading");
     deleteClass({ id: classId });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <AlertDialog open={isOpen && !!classId} onOpenChange={isPending ? () => {} : onClose}>
-      <AlertDialogContent className="rounded-xs">
+    <AlertDialog open={isOpen && !!classId} onOpenChange={handleOpenChange}>
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
           <AlertDialogDescription>
             This action cannot be undone. This will permanently delete your
-            class and remove your data from servers.
+            class and remove your data from our servers.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>
+          <AlertDialogCancel disabled={buttonState !== "idle"}>
             Cancel
           </AlertDialogCancel>
           <LoadingButton
-            type="submit"
             onClick={handleDelete}
-            loadingText="Deleting..."
-            successText="Deleted!"
-            errorText={errorText || "Failed"}
             state={buttonState}
             onStateChange={setButtonState}
             className="w-full md:w-auto"
             variant="destructive"
-            icon={Send}
+            icon={Trash2}
           >
             Delete
           </LoadingButton>

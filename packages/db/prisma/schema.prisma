@@ -189,7 +189,7 @@ model ClassName {
   admissionFees    AdmissionFee[]
   salaryFees       SalaryFee[]
   students         Student[]
-  Batches          Batch[]
+  batches          Batch[]
   attendances      Attendance[]
   attendanceGroups AttendanceGroup[]
   homeworks        Homework[]

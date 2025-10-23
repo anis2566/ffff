@@ -19,12 +19,10 @@ import { useDeleteClass, useEditClass } from "@/hooks/use-class";
 import { usePermissions } from "@/hooks/use-user-permission";
 
 interface ClassNameWithRelation extends ClassName {
-  Batches: {
-    id: string;
-  }[];
-  students: {
-    id: string;
-  }[];
+  _count: {
+    batches: number;
+    students: number;
+  }
 }
 
 interface ClassListProps {
@@ -44,6 +42,7 @@ export const ClassList = ({ classes }: ClassListProps) => {
           <TableHead>Level</TableHead>
           <TableHead>Batches</TableHead>
           <TableHead>Students</TableHead>
+          <TableHead>Session</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
@@ -52,8 +51,9 @@ export const ClassList = ({ classes }: ClassListProps) => {
           <TableRow key={classItem.id} className="even:bg-muted">
             <TableCell>{classItem.name}</TableCell>
             <TableCell>{classItem.level}</TableCell>
-            <TableCell>{classItem.Batches.length}</TableCell>
-            <TableCell>{classItem.students.length}</TableCell>
+            <TableCell>{classItem._count.batches}</TableCell>
+            <TableCell>{classItem._count.students}</TableCell>
+            <TableCell>{classItem.session}</TableCell>
             <TableCell>
               <ListActions>
                 <ListActionButton
@@ -62,6 +62,7 @@ export const ClassList = ({ classes }: ClassListProps) => {
                   onClick={() =>
                     onEdit(
                       classItem.id,
+                      classItem.session,
                       classItem.name,
                       classItem.level,
                       classItem.position.toString()

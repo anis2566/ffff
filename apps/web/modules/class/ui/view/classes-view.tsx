@@ -1,16 +1,17 @@
 "use client";
 
-import { useTRPC } from "@/trpc/react";
+import { useCallback } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
+
+import { useTRPC } from "@/trpc/react";
+import { useGetClasses } from "../../filters/use-get-classes";
+import { useCreateClass } from "@/hooks/use-class";
 
 import { ListCardWrapper } from "@workspace/ui/shared/list-card-wrapper";
 import { DesktopPagination } from "@workspace/ui/shared/desktop-pagination";
 import { MobilePagination } from "@workspace/ui/shared/mobile-pagination";
 
-import { useGetClasses } from "../../filters/use-get-classes";
 import { ClassList } from "../components/class-list";
-
-import { useCreateClass } from "@/hooks/use-class";
 import { Filter } from "../components/filter";
 
 export const ClassesView = () => {
@@ -20,26 +21,34 @@ export const ClassesView = () => {
 
   const { data } = useSuspenseQuery(trpc.class.getAll.queryOptions(filters));
 
+  const classes = data?.classes ?? [];
+  const totalCount = data?.totalCount ?? 0;
+
+  const handlePageChange = useCallback(
+    (page: number) => setFilters({ page }),
+    [setFilters]
+  );
+
   return (
     <ListCardWrapper
       title="Manage Class"
-      value={data?.totalCount}
+      value={totalCount}
       actionButtons
       onClickAction={onOpen}
     >
       <Filter />
-      <ClassList classes={data?.classes ?? []} />
+      <ClassList classes={classes} />
       <DesktopPagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
       <MobilePagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
     </ListCardWrapper>
   );
