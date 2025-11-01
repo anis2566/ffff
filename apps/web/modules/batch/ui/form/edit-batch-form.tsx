@@ -15,7 +15,7 @@ import { useRouter } from "next/navigation";
 import { useTRPC } from "@/trpc/react";
 
 import { BatchSchema, BatchSchemaType } from "@workspace/utils/schemas";
-import { LEVELS } from "@workspace/utils/constant";
+import { LEVELS, Session } from "@workspace/utils/constant";
 
 import { FormCardWrapper } from "@workspace/ui/shared/form-card-wrapper";
 import { FormInput } from "@workspace/ui/shared/form-input";
@@ -26,20 +26,16 @@ import {
 } from "@workspace/ui/shared/loadign-button";
 import { Form } from "@workspace/ui/components/form";
 
-import { useGetBatches } from "../../filters/use-get-batches";
-
 interface Props {
   id: string;
 }
 
 export const EditBatchForm = ({ id }: Props) => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const trpc = useTRPC();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [filters] = useGetBatches();
 
   const { data: batchData } = useSuspenseQuery(
     trpc.batch.getOne.queryOptions(id)
@@ -51,25 +47,28 @@ export const EditBatchForm = ({ id }: Props) => {
 
   const { mutate: updateBatch, isPending } = useMutation(
     trpc.batch.updateOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
         await Promise.all([
-          queryClient.invalidateQueries(
-            trpc.batch.getMany.queryOptions({ ...filters })
-          ),
-          queryClient.invalidateQueries(trpc.batch.getOne.queryOptions(id)),
+          queryClient.invalidateQueries({
+            queryKey: trpc.batch.getMany.queryKey(),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.batch.getOne.queryKey(id),
+          }),
         ]);
         router.push("/batch");
       },
@@ -79,6 +78,7 @@ export const EditBatchForm = ({ id }: Props) => {
   const form = useForm<BatchSchemaType>({
     resolver: zodResolver(BatchSchema),
     defaultValues: {
+      session: batchData?.session || "",
       name: batchData?.name || "",
       classNameId: batchData?.classNameId || "",
       capacity: batchData?.capacity?.toString() || "",
@@ -90,8 +90,6 @@ export const EditBatchForm = ({ id }: Props) => {
   });
 
   const onSubmit = (data: BatchSchemaType) => {
-    console.log(data);
-    setButtonState("loading");
     updateBatch({
       id,
       ...data,
@@ -105,6 +103,14 @@ export const EditBatchForm = ({ id }: Props) => {
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormSelect
+            form={form}
+            name="session"
+            label="Session"
+            placeholder="Select session"
+            options={Session}
+            triggerClassName="w-full"
+          />
           <FormInput
             form={form}
             name="name"
@@ -114,7 +120,7 @@ export const EditBatchForm = ({ id }: Props) => {
           />
           <FormSelect
             form={form}
-            name="className"
+            name="classNameId"
             label="Class"
             placeholder="Select class"
             options={(classes || []).map((classItem) => ({
@@ -144,13 +150,9 @@ export const EditBatchForm = ({ id }: Props) => {
 
           <LoadingButton
             type="submit"
-            onClick={form.handleSubmit(onSubmit)}
-            loadingText="Updating..."
-            successText="Updated!"
-            errorText={errorText || "Failed"}
             state={buttonState}
             onStateChange={setButtonState}
-            className="w-full md:w-auto rounded-full"
+            className="w-full rounded-full"
             icon={Send}
           >
             Update

@@ -15,13 +15,13 @@ export const useCreateSalaryFee = create<CreateSalaryFeeState>((set) => ({
 interface EditSalaryFeeState {
   isOpen: boolean;
   feeId: string;
+  session: string;
   classNameId: string;
   amount: string;
   group?: string;
-  type: string;
   onOpen: (
-    type: string,
     feeId: string,
+    session: string,
     classNameId: string,
     amount: string,
     group?: string
@@ -31,18 +31,18 @@ interface EditSalaryFeeState {
 
 export const useEditSalaryFee = create<EditSalaryFeeState>((set) => ({
   isOpen: false,
-  type: "",
   feeId: "",
+  session: "",
   classNameId: "",
   amount: "",
   group: "",
   onOpen: (
-    type: string,
     feeId: string,
+    session: string,
     classNameId: string,
     amount: string,
     group?: string
-  ) => set({ isOpen: true, type, feeId, classNameId, amount, group }),
+  ) => set({ isOpen: true, session, feeId, classNameId, amount, group }),
   onClose: () =>
     set({
       isOpen: false,
@@ -50,7 +50,7 @@ export const useEditSalaryFee = create<EditSalaryFeeState>((set) => ({
       classNameId: "",
       amount: "",
       group: "",
-      type: "",
+      session: "",
     }),
 }));
 

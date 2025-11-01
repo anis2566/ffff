@@ -1,7 +1,7 @@
 "use client";
 
 import { Filter } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -24,30 +24,15 @@ import { Separator } from "@workspace/ui/components/separator";
 
 import { useGetRoles } from "../../filters/use-get-roles";
 
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
+
 export const MobileFilter = () => {
   const [open, setOpen] = useState(false);
-
   const [filter, setFilter] = useGetRoles();
-
-  const handleSortChange = (value: string) => {
-    try {
-      setFilter({ sort: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleLimitChange = (value: string) => {
-    try {
-      setFilter({ limit: parseInt(value) });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
 
   const hasAnyModified =
     !!filter.search ||
@@ -55,14 +40,37 @@ export const MobileFilter = () => {
     filter.page !== 1 ||
     filter.sort !== "";
 
-  const handleClear = () => {
+  const createFilterHandler = useCallback(
+    (key: string, transform?: (value: string) => any) => (value: string) => {
+      try {
+        setFilter({ [key]: transform ? transform(value) : value });
+      } catch (error) {
+        console.error(`Error setting ${key}:`, error);
+      } finally {
+        setOpen(false);
+      }
+    },
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    () => createFilterHandler("sort"),
+    [createFilterHandler]
+  );
+
+  const handleLimitChange = useCallback(
+    () => createFilterHandler("limit", (v) => parseInt(v, 10)),
+    [createFilterHandler]
+  );
+
+  const handleClear = useCallback(() => {
     setFilter({
       search: "",
       limit: DEFAULT_PAGE_SIZE,
       page: DEFAULT_PAGE,
       sort: "",
     });
-  };
+  }, [setFilter]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -89,18 +97,15 @@ export const MobileFilter = () => {
             value={filter.sort}
             onChange={handleSortChange}
             placeholder="Sort"
-            options={Object.values(DEFAULT_SORT_OPTIONS)}
+            options={SORT_OPTIONS}
             className="max-w-full"
             showInMobile
           />
           <FilterSelect
-            value={filter.limit.toString()}
+            value={""}
             onChange={handleLimitChange}
             placeholder="Limit"
-            options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-              label: v.toString(),
-              value: v.toString(),
-            }))}
+            options={PAGE_SIZE_OPTIONS}
             className="max-w-full"
             showInMobile
           />

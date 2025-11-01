@@ -1,7 +1,7 @@
 "use client";
 
 import { Filter } from "lucide-react";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -18,66 +18,79 @@ import {
   DEFAULT_PAGE_SIZE,
   DEFAULT_PAGE_SIZE_OPTIONS,
   DEFAULT_SORT_OPTIONS,
+  Session,
 } from "@workspace/utils/constant";
 import { ResetFilter } from "@workspace/ui/shared/reset-filter";
 import { Separator } from "@workspace/ui/components/separator";
-import { ClassName } from "@workspace/db";
-
 import { useGetAdmissionFees } from "../../filters/use-get-admission-fees";
 
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
+
 interface MobileFilterProps {
-  classes: ClassName[];
+  classes: {
+    name: string;
+  }[];
 }
 
 export const MobileFilter = ({ classes }: MobileFilterProps) => {
   const [open, setOpen] = useState(false);
-
   const [filter, setFilter] = useGetAdmissionFees();
 
-  const handleSortChange = (value: string) => {
-    try {
-      setFilter({ sort: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleLimitChange = (value: string) => {
-    try {
-      setFilter({ limit: parseInt(value) });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleClassChange = (value: string) => {
-    try {
-      setFilter({ className: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
+  // Memoize the hasAnyModified check
   const hasAnyModified =
     !!filter.className ||
-    filter.limit !== 5 ||
-    filter.page !== 1 ||
-    filter.sort !== "";
+    filter.limit !== DEFAULT_PAGE_SIZE ||
+    filter.page !== DEFAULT_PAGE ||
+    !!filter.sort ||
+    !!filter.session;
 
-  const handleClear = () => {
+  // Generic handler factory to reduce duplication
+  const createFilterHandler = useCallback(
+    (key: string, transform?: (value: string) => any) => (value: string) => {
+      try {
+        setFilter({ [key]: transform ? transform(value) : value });
+      } catch (error) {
+        console.error(`Error setting ${key}:`, error);
+      } finally {
+        setOpen(false);
+      }
+    },
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    () => createFilterHandler("sort"),
+    [createFilterHandler]
+  );
+
+  const handleLimitChange = useCallback(
+    () => createFilterHandler("limit", (v) => parseInt(v, 10)),
+    [createFilterHandler]
+  );
+
+  const handleSessionChange = useCallback(
+    () => createFilterHandler("session"),
+    [createFilterHandler]
+  );
+
+  const handleClassNameChange = useCallback(
+    () => createFilterHandler("className"),
+    [createFilterHandler]
+  );
+
+  const handleClear = useCallback(() => {
     setFilter({
       className: "",
       limit: DEFAULT_PAGE_SIZE,
       page: DEFAULT_PAGE,
       sort: "",
+      session: "",
     });
-  };
+  }, [setFilter]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -88,7 +101,7 @@ export const MobileFilter = ({ classes }: MobileFilterProps) => {
       </DrawerTrigger>
       <DrawerContent className="p-4">
         <DrawerHeader>
-          <DrawerTitle />
+          <DrawerTitle>Filter</DrawerTitle>
         </DrawerHeader>
         <div className="flex items-center justify-between">
           <ResetFilter hasModified={hasAnyModified} handleReset={handleClear} />
@@ -102,12 +115,17 @@ export const MobileFilter = ({ classes }: MobileFilterProps) => {
         <div className="flex flex-col gap-4">
           <FilterSelect
             value={filter.className}
-            onChange={(value: string) => handleClassChange(value)}
+            onChange={handleClassNameChange}
             placeholder="Class"
-            options={(classes || []).map((v) => ({
-              label: v.name,
-              value: v.name,
-            }))}
+            options={classes.map((c) => ({ label: c.name, value: c.name }))}
+            className="max-w-full"
+            showInMobile
+          />
+          <FilterSelect
+            value={filter.session}
+            onChange={handleSessionChange}
+            placeholder="Session"
+            options={Session}
             className="max-w-full"
             showInMobile
           />
@@ -115,18 +133,15 @@ export const MobileFilter = ({ classes }: MobileFilterProps) => {
             value={filter.sort}
             onChange={handleSortChange}
             placeholder="Sort"
-            options={Object.values(DEFAULT_SORT_OPTIONS)}
+            options={SORT_OPTIONS}
             className="max-w-full"
             showInMobile
           />
           <FilterSelect
-            value={filter.limit.toString()}
+            value={""}
             onChange={handleLimitChange}
             placeholder="Limit"
-            options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-              label: v.toString(),
-              value: v.toString(),
-            }))}
+            options={PAGE_SIZE_OPTIONS}
             className="max-w-full"
             showInMobile
           />

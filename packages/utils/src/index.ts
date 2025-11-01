@@ -1,5 +1,6 @@
 import {
   higherSecondaryLevels,
+  INSTITUTE_TYPES,
   LEVELS,
   primaryLevels,
   secondaryLevels,
@@ -19,15 +20,21 @@ export function getLevelByClassName(className: string): LEVELS {
     return LEVELS.Primary;
   }
 
-  if (higherSecondaryLevels.includes(className)) {
-    return LEVELS.HigherSecondary;
-  }
-
   if (secondaryLevels.includes(className)) {
     return LEVELS.Secondary;
   }
 
-  return LEVELS.Primary;
+  return LEVELS.HigherSecondary;
+}
+
+export function getInstituteTypeByClassName(className: string) {
+  const level = getLevelByClassName(className);
+
+  if (level !== LEVELS.HigherSecondary) {
+    return INSTITUTE_TYPES.School;
+  }
+
+  return INSTITUTE_TYPES.College;
 }
 
 export function getGrade(obtainedMarks: number, totalMarks: number): string {

@@ -1,11 +1,11 @@
-import { SearchParams } from "nuqs";
-import { Metadata } from "next";
+import type { Metadata } from "next";
+import type { SearchParams } from "nuqs";
 
 import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 
 import { ContentLayout } from "@/modules/ui/layout/content-layout";
-import { getExamResults } from "@/modules/exam/filters/get-exam-results";
-import { ExamResultsView } from "@/modules/exam/ui/views/exam-results-view";
+import { ExamResultsView } from "@/modules/exam-result/ui/views/exam-results-view";
+import { getExamResults } from "@/modules/exam-result/filters/get-exam-results";
 
 export const metadata: Metadata = {
   title: "Exam Results",
@@ -18,7 +18,7 @@ interface Props {
 
 const ExamResults = async ({ searchParams }: Props) => {
   const params = await getExamResults(searchParams);
-  prefetch(trpc.examResult.getMany.queryOptions(params));
+  await prefetch(trpc.examResult.getMany.queryOptions(params));
 
   return (
     <ContentLayout>

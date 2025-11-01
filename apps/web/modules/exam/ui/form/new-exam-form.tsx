@@ -25,11 +25,9 @@ import {
   Collapsible,
   CollapsibleContent,
 } from "@workspace/ui/components/collapsible";
-import { useGetExams } from "../../filters/use-get-exams";
 
 export const NewExamForm = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
   const [enableCq, setEnableCq] = useState<boolean>(false);
   const [enableMcq, setEnableMcq] = useState<boolean>(false);
   const [enableWritten, setEnableWritten] = useState<boolean>(false);
@@ -37,31 +35,6 @@ export const NewExamForm = () => {
   const trpc = useTRPC();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [filters] = useGetExams()
-
-  const { mutate: createExam, isPending } = useMutation(
-    trpc.exam.createOne.mutationOptions({
-      onError: (err) => {
-        setErrorText(err.message);
-        setButtonState("error");
-        toast.error(err.message);
-      },
-      onSuccess: async (data) => {
-        if (!data.success) {
-          setButtonState("error");
-          setErrorText(data.message);
-          toast.error(data.message);
-          return;
-        }
-        setButtonState("success");
-        toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.exam.getMany.queryOptions({ ...filters })
-        );
-        router.push("/exam");
-      },
-    })
-  );
 
   const form = useForm<ExamSchemaType>({
     resolver: zodResolver(ExamSchema),
@@ -95,8 +68,56 @@ export const NewExamForm = () => {
     ],
   });
 
+  const classOptions =
+    classes?.map((c) => ({
+      value: c.id,
+      label: c.name,
+    })) ?? [];
+
+  const batchOptions =
+    batches?.map((b) => ({
+      value: b.id,
+      label: b.name,
+    })) ?? [];
+
+  const subjectOptions =
+    subjects?.map((s) => ({
+      value: s.id,
+      label: s.name,
+    })) ?? [];
+
+  const categoryOptions =
+    categories?.map((c) => ({
+      value: c.id,
+      label: c.name,
+    })) ?? [];
+
+  const { mutate: createExam, isPending } = useMutation(
+    trpc.exam.createOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
+      onError: (err) => {
+        setButtonState("error");
+        toast.error(err.message);
+      },
+      onSuccess: async (data) => {
+        if (!data.success) {
+          setButtonState("error");
+          toast.error(data.message);
+          return;
+        }
+        setButtonState("success");
+        toast.success(data.message);
+        await queryClient.invalidateQueries({
+          queryKey: trpc.exam.getMany.queryKey(),
+        });
+        router.push("/exam");
+      },
+    })
+  );
+
   const onSubmit = (data: ExamSchemaType) => {
-    setButtonState("loading");
     createExam(data);
   };
 
@@ -126,12 +147,7 @@ export const NewExamForm = () => {
             name="classNameId"
             label="Class"
             placeholder="Select class"
-            options={
-              classes?.map((classItem) => ({
-                label: classItem.name,
-                value: classItem.id,
-              })) || []
-            }
+            options={classOptions}
             disabled={isPending}
           />
           <FormSelect
@@ -139,12 +155,7 @@ export const NewExamForm = () => {
             name="batchId"
             label="Batch"
             placeholder="Select batch"
-            options={
-              batches?.map((batch) => ({
-                label: batch.name,
-                value: batch.id,
-              })) || []
-            }
+            options={batchOptions}
             disabled={isPending}
           />
           <FormSelect
@@ -152,12 +163,7 @@ export const NewExamForm = () => {
             name="subjectId"
             label="Subject"
             placeholder="Select subject"
-            options={
-              subjects?.map((subject) => ({
-                label: subject.name,
-                value: subject.id,
-              })) || []
-            }
+            options={subjectOptions}
             disabled={isPending}
           />
           <FormSelect
@@ -165,12 +171,7 @@ export const NewExamForm = () => {
             name="examCategoryId"
             label="Category"
             placeholder="Select category"
-            options={
-              categories?.map((category) => ({
-                label: category.name,
-                value: category.id,
-              })) || []
-            }
+            options={categoryOptions}
             disabled={isPending}
           />
           <FormCalendar
@@ -249,16 +250,12 @@ export const NewExamForm = () => {
           </Collapsible>
           <LoadingButton
             type="submit"
-            onClick={form.handleSubmit(onSubmit)}
-            loadingText="Saving..."
-            successText="Saved!"
-            errorText={errorText || "Failed"}
             state={buttonState}
             onStateChange={setButtonState}
-            className="w-full md:w-auto rounded-full"
+            className="w-full rounded-full"
             icon={Send}
           >
-            Save
+            Submit
           </LoadingButton>
         </form>
       </Form>

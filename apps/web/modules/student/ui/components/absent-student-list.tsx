@@ -3,7 +3,7 @@
 import { Edit, Eye, Trash2, UserRoundCheck } from "lucide-react";
 import Link from "next/link";
 
-import { ClassName, Student, StudentStatus } from "@workspace/db";
+import { Student, StudentStatus } from "@workspace/db";
 import { ListActions } from "@workspace/ui/shared/list-actions";
 import {
   Table,
@@ -19,13 +19,19 @@ import { STUDENT_STATUS } from "@workspace/utils/constant";
 import { ListActionButton } from "@/components/list-action-button";
 import { ListActionLink } from "@/components/list-action-link";
 import { useDeleteStudent, useMarkPesentStudent } from "@/hooks/use-student";
+import { usePermissions } from "@/hooks/use-user-permission";
 
 interface StudentWithRelation extends Student {
-  className: ClassName;
+  className: {
+    name: string;
+  };
+  institute: {
+    name: string;
+  };
   studentStatus: StudentStatus | null;
-  salaryPayments: {
-    id: string;
-  }[];
+  _count: {
+    salaryPayments: number;
+  };
 }
 
 interface StudentListProps {
@@ -35,6 +41,7 @@ interface StudentListProps {
 export const AbsentStudentList = ({ students }: StudentListProps) => {
   const { onOpen } = useDeleteStudent();
   const { onOpen: onOpenMarkPresent } = useMarkPesentStudent();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -56,7 +63,7 @@ export const AbsentStudentList = ({ students }: StudentListProps) => {
       </TableHeader>
       <TableBody>
         {students.map((student) => (
-          <TableRow key={student.id}>
+          <TableRow key={student.id} className="bg-background/60">
             <TableCell>{student.studentId}</TableCell>
             <TableCell>Image</TableCell>
             <TableCell className="hover:underline">
@@ -64,7 +71,7 @@ export const AbsentStudentList = ({ students }: StudentListProps) => {
                 {student.name}
               </Link>
             </TableCell>
-            <TableCell>{student.school}</TableCell>
+            <TableCell>{student.institute.name}</TableCell>
             <TableCell>{student.className.name}</TableCell>
             <TableCell>{student.group ? student.group : "-"}</TableCell>
             <TableCell>{student.fPhone}</TableCell>
@@ -73,10 +80,10 @@ export const AbsentStudentList = ({ students }: StudentListProps) => {
             <TableCell>
               <Badge
                 variant={
-                  student.salaryPayments.length <= 0 ? "default" : "destructive"
+                  student._count.salaryPayments <= 0 ? "default" : "destructive"
                 }
               >
-                {student.salaryPayments.length} month
+                {student._count.salaryPayments} month
               </Badge>
             </TableCell>
             <TableCell>
@@ -97,22 +104,28 @@ export const AbsentStudentList = ({ students }: StudentListProps) => {
                   title="View"
                   href={`/student/${student.id}`}
                   icon={Eye}
+                  hasPermission={hasPermission("student", "read")}
                 />
                 <ListActionLink
                   title="Edit"
                   href={`/student/edit/${student.id}`}
                   icon={Edit}
+                  hasPermission={hasPermission("student", "update")}
                 />
                 <ListActionButton
                   title="Mark as Present"
                   icon={UserRoundCheck}
-                  onClick={() => onOpenMarkPresent(student.id)}
+                  onClick={() =>
+                    onOpenMarkPresent(student.id, student.classNameId)
+                  }
+                  hasPermission={hasPermission("student", "toggle_present")}
                 />
                 <ListActionButton
                   isDanger
                   title="Delete"
                   icon={Trash2}
                   onClick={() => onOpen(student.id)}
+                  hasPermission={hasPermission("student", "delete")}
                 />
               </ListActions>
             </TableCell>

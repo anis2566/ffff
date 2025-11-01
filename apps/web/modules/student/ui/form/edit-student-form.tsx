@@ -44,6 +44,7 @@ import {
   NATIONALITY,
   SHIFT,
   ADMISSION_TYPE,
+  Session,
 } from "@workspace/utils/constant";
 import { Input } from "@workspace/ui/components/input";
 
@@ -74,7 +75,7 @@ const STEPS = [
     id: 2,
     name: "Academic Info",
     fields: [
-      "school",
+      "instituteId",
       "classNameId",
       "shift",
       "group",
@@ -107,7 +108,13 @@ const STEPS = [
   {
     id: 5,
     name: "Batch & Fees",
-    fields: ["batchId", "studentId", "admissionFee", "salaryFee"] as const,
+    fields: [
+      "session",
+      "batchId",
+      "studentId",
+      "admissionFee",
+      "salaryFee",
+    ] as const,
     Icon: DollarSign,
   },
 ] as const;
@@ -124,7 +131,8 @@ const DEFAULT_VALUES: StudentSchemaType = {
   nationality: NATIONALITY.Bangladeshi,
   religion: RELIGION.Islam,
   imageUrl: "",
-  school: "",
+  instituteId: "",
+  session: "",
   classNameId: "",
   section: "",
   shift: "",
@@ -183,6 +191,7 @@ const useFeeManagement = (
       trpc.salaryFee.getForAdmission.queryOptions({ classNameId, group }),
       trpc.class.forSelect.queryOptions({ search: "" }),
       trpc.batch.getByClass.queryOptions(classNameId),
+      trpc.institute.getByClass.queryOptions({ classId: classNameId }), // ADD THIS
       // Only fetch counter for new students, not when editing
       ...(isEditing
         ? []
@@ -195,7 +204,8 @@ const useFeeManagement = (
     salaryFee: queries[1],
     classes: queries[2],
     batches: queries[3],
-    counter: isEditing ? null : queries[4],
+    institutes: queries[4], // ADD THIS
+    counter: isEditing ? null : queries[5], // UPDATE INDEX
     editStates,
     toggleEdit,
   };
@@ -214,6 +224,7 @@ interface StepProps {
   isPending: boolean;
   classOptions?: Array<{ label: string; value: string }>;
   batchOptions?: Array<{ label: string; value: string }>;
+  instituteOptions?: Array<{ label: string; value: string; id?: string }>;
 }
 
 interface EditableFieldProps extends StepProps {
@@ -314,23 +325,25 @@ const AcademicInfoStep = ({
   trigger,
   isPending,
   classOptions = [],
+  instituteOptions = [],
 }: StepProps) => (
   <div className="grid md:grid-cols-2 gap-6 items-start">
-    <FormInput
-      form={form}
-      name="school"
-      label="School Name"
-      type="text"
-      trigger={trigger}
-      disabled={isPending}
-    />
-
     <FormSelect
       form={form}
       name="classNameId"
       label="Class"
       options={classOptions}
       placeholder="select class"
+      trigger={trigger}
+      disabled={isPending}
+    />
+
+    <FormSelect
+      form={form}
+      name="instituteId"
+      label="School/College"
+      options={instituteOptions}
+      placeholder="select institute"
       trigger={trigger}
       disabled={isPending}
     />
@@ -542,6 +555,15 @@ const FeeStep = ({
   <div className="grid md:grid-cols-2 gap-6 items-start">
     <FormSelect
       form={form}
+      name="session"
+      label="Session"
+      options={Session}
+      placeholder="select session"
+      trigger={trigger}
+      disabled={isPending || isUpdating}
+    />
+    <FormSelect
+      form={form}
       name="batchId"
       label="Batch"
       options={batchOptions}
@@ -646,6 +668,7 @@ export const EditStudentFormView = ({ id }: EditStudentFormViewProps) => {
     toggleEdit,
     classes,
     batches,
+    institutes,
   } = useFeeManagement(classNameId, className, group, true);
 
   // Transform class data to options format
@@ -666,6 +689,17 @@ export const EditStudentFormView = ({ id }: EditStudentFormViewProps) => {
     }));
   }, [batches]);
 
+  const instituteOptions = useMemo(() => {
+    if (!institutes || !institutes.data || !Array.isArray(institutes.data))
+      return [];
+    return institutes.data.map((institute: any) => ({
+      label: institute.name || institute.label,
+      value: institute.id || institute.value,
+      id: institute.id,
+    }));
+  }, [institutes]);
+
+  // Populate form with existing student data
   // Populate form with existing student data
   useEffect(() => {
     if (studentData) {
@@ -678,17 +712,19 @@ export const EditStudentFormView = ({ id }: EditStudentFormViewProps) => {
         fName: student.fName || "",
         mName: student.mName || "",
         gender: student.gender || "",
-        dob: student.dob.toISOString() || new Date().toISOString(),
-        studentId: student.studentId.toString() || "",
+        dob: student.dob
+          ? new Date(student.dob).toISOString()
+          : new Date().toISOString(), // FIXED: Ensure proper date conversion
+        studentId: student.studentId?.toString() || "",
         nationality: student.nationality || NATIONALITY.Bangladeshi,
         religion: student.religion || RELIGION.Islam,
         imageUrl: student.imageUrl || "",
-        school: student.school || "",
+        instituteId: student.instituteId || "", // CHANGED from school
         classNameId: student.classNameId || "",
         section: student.section || "",
         shift: student.shift || "",
         group: student.group || "",
-        roll: student.roll.toString() || "",
+        roll: student.roll?.toString() || "",
         fPhone: student.fPhone || "",
         mPhone: student.mPhone || "",
         presentHouseNo: student.presentHouseNo || "",
@@ -703,11 +739,17 @@ export const EditStudentFormView = ({ id }: EditStudentFormViewProps) => {
         salaryFee: student.salaryFee?.toString() || "",
         type: student.type || ADMISSION_TYPE.Monthly,
         batchId: student.batchId || "",
+        session: student.session || "", // ADD THIS
       };
 
       reset(formData);
+
+      // IMPORTANT: Trigger validation after reset to ensure form state is correct
+      setTimeout(() => {
+        trigger();
+      }, 0);
     }
-  }, [studentData, reset]);
+  }, [studentData, reset, trigger]);
 
   // Auto-populate fees only if they're empty and not being edited
   useEffect(() => {
@@ -777,7 +819,12 @@ export const EditStudentFormView = ({ id }: EditStudentFormViewProps) => {
       case 1:
         return <PersonalInfoStep {...stepProps} />;
       case 2:
-        return <AcademicInfoStep {...stepProps} />;
+        return (
+          <AcademicInfoStep
+            {...stepProps}
+            instituteOptions={instituteOptions}
+          />
+        );
       case 3:
         return <AddressStep {...stepProps} />;
       case 4:

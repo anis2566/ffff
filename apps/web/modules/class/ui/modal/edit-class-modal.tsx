@@ -27,7 +27,6 @@ import { ClassNameSchema, ClassNameSchemaType } from "@workspace/utils/schemas";
 import { LEVELS, Session } from "@workspace/utils/constant";
 
 import { useEditClass } from "@/hooks/use-class";
-import { useGetClasses } from "../../filters/use-get-classes";
 
 const LEVEL_OPTIONS = Object.values(LEVELS).map((level) => ({
   label: level,
@@ -40,7 +39,6 @@ export const EditClassModal = () => {
   const { isOpen, onClose, classId, session, name, level, position } =
     useEditClass();
   const trpc = useTRPC();
-  const [filters] = useGetClasses();
   const queryClient = useQueryClient();
 
   const form = useForm<ClassNameSchemaType>({
@@ -84,11 +82,13 @@ export const EditClassModal = () => {
         setButtonState("success");
         toast.success(data.message);
 
-        await queryClient.invalidateQueries(
-          trpc.class.getAll.queryOptions({ ...filters })
-        );
+        await queryClient.invalidateQueries({
+          queryKey: trpc.class.getAll.queryKey(),
+        });
 
-        onClose();
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );

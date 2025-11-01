@@ -24,63 +24,74 @@ import {
 } from "@workspace/ui/shared/loadign-button";
 
 import { InstituteSchema, InstituteSchemaType } from "@workspace/utils/schemas";
-import { INSTITUTE_TYPES } from "@workspace/utils/constant";
+import { INSTITUTE_TYPES, Session } from "@workspace/utils/constant";
 
-import { useGetInstitutes } from "../../filters/use-get-institutes";
 import { useCreateInstitute } from "@/hooks/use-institute";
+
+const DEFAULT_VALUES: InstituteSchemaType = {
+  session: "",
+  type: "",
+  name: "",
+};
+
+const INSTITUTE_TYPES_OPTIONS = Object.values(INSTITUTE_TYPES).map((type) => ({
+  label: type,
+  value: type,
+}));
 
 export const CreateInstituteModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, onClose } = useCreateInstitute();
   const trpc = useTRPC();
-  const [filters] = useGetInstitutes();
   const queryClient = useQueryClient();
+
+  const form = useForm<InstituteSchemaType>({
+    resolver: zodResolver(InstituteSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
 
   const { mutate: createInstitute, isPending } = useMutation(
     trpc.institute.createOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.institute.getMany.queryOptions({ ...filters })
-        );
-        form.reset({
-          type: "",
-          name: "",
+        queryClient.invalidateQueries({
+          queryKey: trpc.institute.getMany.queryKey(),
         });
-        onClose();
+        form.reset(DEFAULT_VALUES);
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
 
-  const form = useForm<InstituteSchemaType>({
-    resolver: zodResolver(InstituteSchema),
-    defaultValues: {
-      type: "",
-      name: "",
-    },
-  });
-
   const onSubmit = (data: InstituteSchemaType) => {
-    setButtonState("loading");
     createInstitute(data);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Set up your institute</DialogTitle>
@@ -92,14 +103,19 @@ export const CreateInstituteModal = () => {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormSelect
               form={form}
+              name="session"
+              label="Session"
+              placeholder="Select session"
+              options={Session}
+              triggerClassName="w-full"
+            />
+            <FormSelect
+              form={form}
               name="type"
               label="Type"
               placeholder="Select type"
               disabled={isPending}
-              options={Object.values(INSTITUTE_TYPES).map((type) => ({
-                value: type,
-                label: type,
-              }))}
+              options={INSTITUTE_TYPES_OPTIONS}
             />
             <FormInput
               form={form}
@@ -110,10 +126,6 @@ export const CreateInstituteModal = () => {
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Submitting..."
-              successText="Submitted!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

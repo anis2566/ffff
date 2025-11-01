@@ -15,7 +15,7 @@ import { ResetFilter } from "@workspace/ui/shared/reset-filter";
 
 import { useGetClasses } from "../../filters/use-get-classes";
 import { MobileFilter } from "./mobile-filter";
-import { useMemo, useCallback } from "react";
+import { useCallback } from "react";
 
 // Pre-compute static options outside component
 const LEVEL_OPTIONS = Object.values(LEVELS).map((v) => ({
@@ -32,23 +32,13 @@ export const Filter = () => {
   const [filter, setFilter] = useGetClasses();
 
   // Memoize the hasAnyModified check
-  const hasAnyModified = useMemo(
-    () =>
-      !!filter.search ||
-      filter.limit !== DEFAULT_PAGE_SIZE ||
-      filter.page !== DEFAULT_PAGE ||
-      !!filter.sort ||
-      !!filter.level ||
-      !!filter.session,
-    [
-      filter.search,
-      filter.limit,
-      filter.page,
-      filter.sort,
-      filter.level,
-      filter.session,
-    ]
-  );
+  const hasAnyModified =
+    !!filter.search ||
+    filter.limit !== DEFAULT_PAGE_SIZE ||
+    filter.page !== DEFAULT_PAGE ||
+    !!filter.sort ||
+    !!filter.level ||
+    !!filter.session;
 
   // Memoize handlers
   const handleClear = useCallback(() => {
@@ -103,28 +93,28 @@ export const Filter = () => {
           onChange={handleLevelChange}
           placeholder="Level"
           options={LEVEL_OPTIONS}
-          className="max-w-[100px]"
+          className="max-w-[120px]"
         />
         <FilterSelect
           value={filter.session}
           onChange={handleSessionChange}
           placeholder="Session"
           options={Session}
-          className="max-w-[100px]"
+          className="max-w-[120px]"
         />
         <FilterSelect
           value={filter.sort}
           onChange={handleSortChange}
           placeholder="Sort"
           options={SORT_OPTIONS}
-          className="max-w-[100px]"
+          className="max-w-[120px]"
         />
         <FilterSelect
-          value={filter.limit.toString()}
+          value={""}
           onChange={handleLimitChange}
           placeholder="Limit"
           options={PAGE_SIZE_OPTIONS}
-          className="max-w-[100px]"
+          className="max-w-[120px]"
         />
       </div>
       <div className="flex items-center gap-x-2">

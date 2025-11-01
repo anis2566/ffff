@@ -15,20 +15,28 @@ export const useCreateInstitute = create<CreateInstituteState>((set) => ({
 interface EditInstituteState {
   isOpen: boolean;
   instituteId: string;
+  session: string;
   type: string;
   name: string;
-  onOpen: (instituteId: string, type: string, name: string) => void;
+  onOpen: (
+    instituteId: string,
+    session: string,
+    type: string,
+    name: string
+  ) => void;
   onClose: () => void;
 }
 
 export const useEditInstitute = create<EditInstituteState>((set) => ({
   isOpen: false,
   instituteId: "",
+  session: "",
   type: "",
   name: "",
-  onOpen: (id: string, type: string, name: string) =>
-    set({ isOpen: true, instituteId: id, type, name }),
-  onClose: () => set({ isOpen: false, instituteId: "", type: "", name: "" }),
+  onOpen: (instituteId: string, session: string, type: string, name: string) =>
+    set({ isOpen: true, instituteId, session, type, name }),
+  onClose: () =>
+    set({ isOpen: false, instituteId: "", session: "", type: "", name: "" }),
 }));
 
 interface DeleteInstituteState {

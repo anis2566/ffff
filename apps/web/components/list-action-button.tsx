@@ -10,6 +10,7 @@ interface ListActionButtonProps {
   title: string;
   isDanger?: boolean;
   hasPermission?: boolean;
+  className?: string;
 }
 
 export const ListActionButton = ({
@@ -18,6 +19,7 @@ export const ListActionButton = ({
   title,
   isDanger = false,
   hasPermission = true,
+  className,
 }: ListActionButtonProps) => {
   if (!hasPermission) return null;
 
@@ -27,7 +29,8 @@ export const ListActionButton = ({
       <DropdownMenuItem
         className={cn(
           "flex items-center gap-x-3 rounded-[0px] h-7",
-          isDanger && "text-rose-500 group-hover:text-rose-600"
+          isDanger && "text-rose-500 group-hover:text-rose-600",
+          className
         )}
         onClick={onClick}
       >

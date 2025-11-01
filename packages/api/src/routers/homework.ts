@@ -1,10 +1,30 @@
 import type { TRPCRouterRecord } from "@trpc/server";
+import type { Prisma } from "@workspace/db";
 import z from "zod";
+import { format } from "date-fns";
 
 import { permissionProcedure, protectedProcedure } from "../trpc";
+import { HomeworkSchema } from "@workspace/utils/schemas";
 
-import { HomeworkSchema } from "../../../utils/src/schemas";
-import { format } from "date-fns";
+// Shared error handler
+const handleError = (error: unknown, operation: string) => {
+  console.error(`Error ${operation}:`, error);
+  return { success: false, message: "Internal server error" };
+};
+
+// Build date filter with proper typing
+const buildDateFilter = (
+  date?: string | null
+): Prisma.HomeworkGroupWhereInput => (date ? { date: new Date(date) } : {});
+
+// Build filter with proper typing for homework group
+const buildHomeworkGroupFilter = (
+  classNameId?: string | null,
+  batchId?: string | null
+): Prisma.HomeworkGroupWhereInput => ({
+  ...(classNameId && { classNameId }),
+  ...(batchId && { batchId }),
+});
 
 export const homeworkRouter = {
   createOne: permissionProcedure("homework", "create")
@@ -13,13 +33,32 @@ export const homeworkRouter = {
       const { date, classNameId, batchId, subjectId } = input;
 
       try {
-        const existingHomework = await ctx.db.homeworkGroup.findFirst({
-          where: {
-            date: new Date(date),
-            batchId,
-            subjectId,
-          },
-        });
+        const parsedDate = new Date(date);
+
+        // Parallel validation
+        const [existingHomework, batch, subject] = await Promise.all([
+          ctx.db.homeworkGroup.findFirst({
+            where: {
+              date: parsedDate,
+              batchId,
+              subjectId,
+            },
+            select: { id: true },
+          }),
+          ctx.db.batch.findUnique({
+            where: { id: batchId },
+            select: {
+              name: true,
+              students: {
+                select: { id: true },
+              },
+            },
+          }),
+          ctx.db.subject.findUnique({
+            where: { id: subjectId },
+            select: { name: true },
+          }),
+        ]);
 
         if (existingHomework) {
           return {
@@ -27,19 +66,6 @@ export const homeworkRouter = {
             message: "Homework already exists for this subject or date",
           };
         }
-
-        const batch = await ctx.db.batch.findUnique({
-          where: {
-            id: batchId,
-          },
-          include: {
-            students: {
-              select: {
-                id: true,
-              },
-            },
-          },
-        });
 
         if (!batch) {
           return { success: false, message: "Batch not found" };
@@ -49,23 +75,17 @@ export const homeworkRouter = {
           return { success: false, message: "No students found in batch" };
         }
 
-        const subject = await ctx.db.subject.findUnique({
-          where: {
-            id: subjectId,
-          },
-        });
-
         if (!subject) {
           return { success: false, message: "Subject not found" };
         }
 
-        const formatedDate = format(date, "dd-MM-yyyy");
-        const name = `${batch.name}-${subject.name}-${formatedDate}`;
+        const formattedDate = format(parsedDate, "dd-MM-yyyy");
+        const name = `${batch.name}-${subject.name}-${formattedDate}`;
 
         await ctx.db.homeworkGroup.create({
           data: {
             name,
-            date: new Date(date),
+            date: parsedDate,
             batchId,
             subjectId,
             classNameId,
@@ -74,7 +94,7 @@ export const homeworkRouter = {
               createMany: {
                 data: batch.students.map((student) => ({
                   studentId: student.id,
-                  date: new Date(date),
+                  date: parsedDate,
                   subjectId,
                   batchId,
                   classNameId,
@@ -84,12 +104,12 @@ export const homeworkRouter = {
           },
         });
 
-        return { success: true, message: "Homework created" };
+        return { success: true, message: "Homework created successfully" };
       } catch (error) {
-        console.error("Error creating homework:", error);
-        return { success: false, message: "Internal server error" };
+        return handleError(error, "creating homework");
       }
     }),
+
   updateMany: permissionProcedure("homework", "update")
     .input(
       z.object({
@@ -99,11 +119,11 @@ export const homeworkRouter = {
     )
     .mutation(async ({ ctx, input }) => {
       const { ids, homeworkId } = input;
+
       try {
         const homework = await ctx.db.homeworkGroup.findUnique({
-          where: {
-            id: homeworkId,
-          },
+          where: { id: homeworkId },
+          select: { id: true, total: true },
         });
 
         if (!homework) {
@@ -113,18 +133,14 @@ export const homeworkRouter = {
         const unfinished = homework.total - ids.length;
 
         await ctx.db.homeworkGroup.update({
-          where: {
-            id: homeworkId,
-          },
+          where: { id: homeworkId },
           data: {
             finished: ids.length,
             unfinished,
             homeworks: {
               updateMany: {
                 where: {
-                  id: {
-                    in: ids,
-                  },
+                  id: { in: ids },
                 },
                 data: {
                   hasFinished: true,
@@ -134,36 +150,26 @@ export const homeworkRouter = {
           },
         });
 
-        return { success: true, message: "Homework updated" };
+        return { success: true, message: "Homework updated successfully" };
       } catch (error) {
-        console.error("Error updating homework:", error);
-        return { success: false, message: "Internal server error" };
+        return handleError(error, "updating homework");
       }
     }),
+
   getOne: protectedProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }) => {
-      const { id } = input;
-
       const homework = await ctx.db.homeworkGroup.findUnique({
-        where: {
-          id,
-        },
+        where: { id: input.id },
         include: {
           className: {
-            select: {
-              name: true,
-            },
+            select: { name: true },
           },
           batch: {
-            select: {
-              name: true,
-            },
+            select: { name: true },
           },
           subject: {
-            select: {
-              name: true,
-            },
+            select: { name: true },
           },
           homeworks: {
             include: {
@@ -183,79 +189,78 @@ export const homeworkRouter = {
 
       return homework;
     }),
+
   deleteOne: permissionProcedure("homework", "delete")
     .input(z.object({ id: z.string() }))
     .mutation(async ({ ctx, input }) => {
-      const { id } = input;
-
       try {
-        const existingHomework = await ctx.db.homeworkGroup.findFirst({
-          where: {
-            id,
-          },
+        // Use delete directly - Prisma will throw if not found
+        await ctx.db.homeworkGroup.delete({
+          where: { id: input.id },
         });
 
-        if (!existingHomework) {
+        return { success: true, message: "Homework deleted successfully" };
+      } catch (error) {
+        // Check if it's a record not found error
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "P2025"
+        ) {
           return { success: false, message: "Homework not found" };
         }
-
-        await ctx.db.homeworkGroup.delete({
-          where: {
-            id,
-          },
-        });
-
-        return { success: true, message: "Homework deleted" };
-      } catch (error) {
-        console.error("Error deleting homework:", error);
-        return { success: false, message: "Internal server error" };
+        return handleError(error, "deleting homework");
       }
     }),
+
   getByStudent: protectedProcedure
     .input(
       z.object({
         studentId: z.string(),
-        page: z.number(),
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(5),
       })
     )
-    .query(async ({ input, ctx }) => {
-      const { studentId, page } = input;
+    .query(async ({ ctx, input }) => {
+      const { studentId, page, limit } = input;
+
+      const where: Prisma.HomeworkWhereInput = { studentId };
 
       const [homeworks, totalCount] = await Promise.all([
         ctx.db.homework.findMany({
-          where: {
-            studentId,
-          },
-          include: {
+          where,
+          select: {
+            id: true,
+            date: true,
+            hasFinished: true,
+            createdAt: true,
             subject: {
-              select: {
-                name: true,
-              },
+              select: { name: true },
             },
           },
           orderBy: {
             createdAt: "desc",
           },
-          take: 5,
-          skip: (page - 1) * 5,
+          take: limit,
+          skip: (page - 1) * limit,
         }),
-        ctx.db.homework.count({
-          where: {
-            studentId,
-          },
-        }),
+        ctx.db.homework.count({ where }),
       ]);
 
       return {
         homeworks,
         totalCount,
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
       };
     }),
+
   getMany: permissionProcedure("homework", "read")
     .input(
       z.object({
-        page: z.number(),
-        limit: z.number().min(1).max(100),
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(10),
         sort: z.string().nullish(),
         date: z.string().nullish(),
         classNameId: z.string().nullish(),
@@ -265,34 +270,23 @@ export const homeworkRouter = {
     .query(async ({ ctx, input }) => {
       const { page, limit, sort, date, classNameId, batchId } = input;
 
+      const where: Prisma.HomeworkGroupWhereInput = {
+        ...buildDateFilter(date),
+        ...buildHomeworkGroupFilter(classNameId, batchId),
+      };
+
       const [homeworks, totalCount] = await Promise.all([
         ctx.db.homeworkGroup.findMany({
-          where: {
-            ...(date && {
-              date: new Date(date),
-            }),
-            ...(classNameId && {
-              classNameId,
-            }),
-            ...(batchId && {
-              batchId,
-            }),
-          },
+          where,
           include: {
             className: {
-              select: {
-                name: true,
-              },
+              select: { name: true },
             },
             batch: {
-              select: {
-                name: true,
-              },
+              select: { name: true },
             },
             subject: {
-              select: {
-                name: true,
-              },
+              select: { name: true },
             },
           },
           orderBy: {
@@ -301,24 +295,14 @@ export const homeworkRouter = {
           take: limit,
           skip: (page - 1) * limit,
         }),
-        ctx.db.homeworkGroup.count({
-          where: {
-            ...(date && {
-              date: new Date(date),
-            }),
-            ...(classNameId && {
-              classNameId,
-            }),
-            ...(batchId && {
-              batchId,
-            }),
-          },
-        }),
+        ctx.db.homeworkGroup.count({ where }),
       ]);
 
       return {
         homeworks,
         totalCount,
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
       };
     }),
 } satisfies TRPCRouterRecord;

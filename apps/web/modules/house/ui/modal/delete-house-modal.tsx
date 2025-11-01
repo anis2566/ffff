@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/react";
@@ -21,52 +21,54 @@ import {
 } from "@workspace/ui/shared/loadign-button";
 
 import { useDeleteHouse } from "@/hooks/use-house";
-import { useGetHouses } from "../../filters/use-get-houses";
 
 export const DeleteHouseModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, houseId, onClose } = useDeleteHouse();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  const [filters] = useGetHouses();
-
   const { mutate: deleteHouse, isPending } = useMutation(
     trpc.house.deleteOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.house.getMany.queryOptions({ ...filters })
-        );
-        onClose();
+        queryClient.invalidateQueries({
+          queryKey: trpc.house.getMany.queryKey(),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
 
   const handleDelete = () => {
-    setButtonState("loading");
     deleteHouse(houseId);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <AlertDialog
-      open={isOpen && !!houseId}
-      onOpenChange={isPending ? () => {} : onClose}
-    >
+    <AlertDialog open={isOpen && !!houseId} onOpenChange={handleOpenChange}>
       <AlertDialogContent className="rounded-xs">
         <AlertDialogHeader>
           <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
@@ -78,16 +80,12 @@ export const DeleteHouseModal = () => {
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <LoadingButton
-            type="submit"
             onClick={handleDelete}
-            loadingText="Deleting..."
-            successText="Deleted!"
-            errorText={errorText || "Failed"}
             state={buttonState}
             onStateChange={setButtonState}
             className="w-full md:w-auto"
             variant="destructive"
-            icon={Send}
+            icon={Trash2}
           >
             Delete
           </LoadingButton>

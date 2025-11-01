@@ -4,8 +4,8 @@ import { Metadata } from "next";
 import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 
 import { ContentLayout } from "@/modules/ui/layout/content-layout";
-import { getPayments } from "@/modules/fee/filters/get-payments";
-import { SalaryPaymentsView } from "@/modules/fee/ui/view/salary-payments-view";
+import { getPayments } from "@/modules/salary-payment/filters/get-payments";
+import { SalaryPaymentsView } from "@/modules/salary-payment/ui/view/salary-payments-view";
 
 export const metadata: Metadata = {
   title: "Income | Salary",

@@ -1,19 +1,16 @@
 import type { TRPCRouterRecord } from "@trpc/server";
 import z from "zod";
 
-import { allPermissionsProcedure, protectedProcedure } from "../trpc";
+import { permissionProcedure, protectedProcedure } from "../trpc";
 
 import { HousePaymentSchema } from "@workspace/utils/schemas";
-import { MONTH } from "@workspace/utils/constant";
+import { MONTH, SALARY_PAYMENT_STATUS } from "@workspace/utils/constant";
 
 export const housePaymentRouter = {
-  createOne: allPermissionsProcedure([
-    { module: "house_payment", action: "create" },
-    { module: "expense", action: "create" },
-  ])
+  createOne: permissionProcedure("house_payment", "create")
     .input(HousePaymentSchema)
     .mutation(async ({ input, ctx }) => {
-      const { houseId, month, amount, method, paymentStatus } = input;
+      const { houseId, month, amount, method } = input;
 
       try {
         const isValidMonth = await ctx.db.housePayment.findUnique({
@@ -46,9 +43,10 @@ export const housePaymentRouter = {
             month: Object.values(MONTH)[new Date().getMonth()] as string,
             amount: parseInt(amount),
             method,
-            paymentStatus,
+            paymentStatus: SALARY_PAYMENT_STATUS.Paid,
             houseId,
             houseName: house.name,
+            updatedBy: ctx?.session?.user?.name,
           },
         });
 
@@ -71,10 +69,7 @@ export const housePaymentRouter = {
 
     return paymentData;
   }),
-  getMany: allPermissionsProcedure([
-    { module: "house_payment", action: "read" },
-    { module: "expense", action: "read" },
-  ])
+  getMany: permissionProcedure("house_payment", "read")
     .input(
       z.object({
         page: z.number(),

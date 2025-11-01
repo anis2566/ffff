@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 interface Props {
   searchParams: Promise<SearchParams>;
-}
+} 
 
 const Classes = async ({ searchParams }: Props) => {
   const params = await getClasses(searchParams);

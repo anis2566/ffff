@@ -39,6 +39,7 @@ import {
   NATIONALITY,
   SHIFT,
   ADMISSION_TYPE,
+  Session,
 } from "@workspace/utils/constant";
 import { Input } from "@workspace/ui/components/input";
 
@@ -46,6 +47,7 @@ import { StepIndicator } from "../components/step-indicator";
 import { FormInput } from "../components/form-input";
 import { FormSelect } from "../components/form-select";
 import { FormCalendar } from "../components/form-calendar";
+import { FormSearchSelect } from "@workspace/ui/shared/form-search-select";
 
 // Constants
 const STEPS = [
@@ -68,7 +70,7 @@ const STEPS = [
     id: 2,
     name: "Academic Info",
     fields: [
-      "school",
+      "instituteId",
       "classNameId",
       "shift",
       "group",
@@ -101,7 +103,13 @@ const STEPS = [
   {
     id: 5,
     name: "Batch & Fees",
-    fields: ["batchId", "studentId", "admissionFee", "salaryFee"] as const,
+    fields: [
+      "session",
+      "batchId",
+      "studentId",
+      "admissionFee",
+      "salaryFee",
+    ] as const,
     Icon: DollarSign,
   },
 ] as const;
@@ -118,7 +126,7 @@ const DEFAULT_VALUES: StudentSchemaType = {
   nationality: NATIONALITY.Bangladeshi,
   religion: RELIGION.Islam,
   imageUrl: "",
-  school: "",
+  instituteId: "",
   classNameId: "",
   section: "",
   shift: "",
@@ -138,6 +146,7 @@ const DEFAULT_VALUES: StudentSchemaType = {
   salaryFee: "",
   type: ADMISSION_TYPE.Monthly,
   batchId: "",
+  session: "",
 };
 
 // Select options - memoized to prevent re-creation
@@ -180,6 +189,7 @@ const useFeeManagement = (
       trpc.counter.getForAdmission.queryOptions({ classNameId }),
       trpc.class.forSelect.queryOptions({ search: "" }),
       trpc.batch.getByClass.queryOptions(classNameId),
+      trpc.institute.getByClass.queryOptions({ classId: classNameId }),
     ],
   });
 
@@ -189,6 +199,7 @@ const useFeeManagement = (
     counter: queries[2],
     classes: queries[3],
     batches: queries[4],
+    institutes: queries[5],
     editStates,
     toggleEdit,
   };
@@ -203,6 +214,7 @@ interface StepProps {
   isPending: boolean;
   classOptions?: Array<{ label: string; value: string }>;
   batchOptions?: Array<{ label: string; value: string }>;
+  instituteOptions?: Array<{ label: string; value: string; id?: string }>;
 }
 
 interface EditableFieldProps extends StepProps {
@@ -303,23 +315,25 @@ const AcademicInfoStep = ({
   trigger,
   isPending,
   classOptions = [],
+  instituteOptions = [],
 }: StepProps) => (
   <div className="grid md:grid-cols-2 gap-6 items-start">
-    <FormInput
-      form={form}
-      name="school"
-      label="School Name"
-      type="text"
-      trigger={trigger}
-      disabled={isPending}
-    />
-
     <FormSelect
       form={form}
       name="classNameId"
       label="Class"
       options={classOptions}
       placeholder="select class"
+      trigger={trigger}
+      disabled={isPending}
+    />
+
+    <FormSelect
+      form={form}
+      name="instituteId"
+      label="School/College"
+      options={instituteOptions}
+      placeholder="select institute"
       trigger={trigger}
       disabled={isPending}
     />
@@ -531,6 +545,15 @@ const FeeStep = ({
   <div className="grid md:grid-cols-2 gap-6 items-start">
     <FormSelect
       form={form}
+      name="session"
+      label="Session"
+      options={Session}
+      placeholder="select session"
+      trigger={trigger}
+      disabled={isPending || isCreating}
+    />
+    <FormSelect
+      form={form}
       name="batchId"
       label="Batch"
       options={batchOptions}
@@ -572,6 +595,7 @@ const FeeStep = ({
 
 export const AdmissionForm = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const [searchQuery, setSearchQuery] = useState<string>("");
 
   const trpc = useTRPC();
   const queryClient = useQueryClient();
@@ -620,9 +644,8 @@ export const AdmissionForm = () => {
     toggleEdit,
     classes,
     batches,
+    institutes,
   } = useFeeManagement(classNameId, className, group);
-
-  console.log(counter.data?.count);
 
   // Transform class data to options format
   const classOptions = useMemo(() => {
@@ -641,6 +664,16 @@ export const AdmissionForm = () => {
       value: batch.id || batch.value,
     }));
   }, [batches.data]);
+
+  // Transform institute data to options format
+  const instituteOptions = useMemo(() => {
+    if (!institutes.data) return [];
+    return institutes.data.map((institute: any) => ({
+      label: institute.name || institute.label,
+      value: institute.id || institute.value,
+      id: institute.id,
+    }));
+  }, [institutes.data]);
 
   // Auto-populate fees and student ID
   useEffect(() => {
@@ -698,6 +731,7 @@ export const AdmissionForm = () => {
       isPending: false,
       classOptions,
       batchOptions,
+      instituteOptions,
     };
 
     switch (currentStep) {
@@ -730,6 +764,7 @@ export const AdmissionForm = () => {
     isPending,
     classOptions,
     batchOptions,
+    instituteOptions,
   ]);
 
   const stepIndicatorSteps = useMemo(

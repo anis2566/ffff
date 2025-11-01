@@ -201,68 +201,85 @@ model ClassName {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([session, name])
+  @@index([session])
+  @@index([level])
 }
 
 model Subject {
-  id    String  @id @default(auto()) @map("_id") @db.ObjectId
-  name  String
-  level String
-  group String?
+  id      String  @id @default(auto()) @map("_id") @db.ObjectId
+  session String
+  name    String
+  level   String
+  group   String?
 
   homeworks        Homework[]
   homeworkGroups   HomeworkGroup[]
   exams            Exam[]
   examResultGroups ExamResultGroup[]
   documents        Document[]
+  batchClasses     BatchClass[]
 
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  BatchClass BatchClass[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([session])
+  @@index([level])
 }
 
 model Counter {
-  id    String @id @default(auto()) @map("_id") @db.ObjectId
-  type  String @unique
-  value Int    @default(0)
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  session String
+  type    String @unique
+  value   Int    @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([session])
 }
 
 model AdmissionFee {
-  id     String @id @default(auto()) @map("_id") @db.ObjectId
-  amount Int
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  session String
+  amount  Int
 
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([session])
 }
 
 model SalaryFee {
-  id     String  @id @default(auto()) @map("_id") @db.ObjectId
-  type   String
-  group  String?
-  amount Int
+  id      String  @id @default(auto()) @map("_id") @db.ObjectId
+  session String
+  group   String?
+  amount  Int
 
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([session])
 }
 
 model Institute {
-  id   String @id @default(auto()) @map("_id") @db.ObjectId
-  type String
-  name String
+  id      String @id @default(auto()) @map("_id") @db.ObjectId
+  session String
+  type    String
+  name    String
 
   students Student[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([session])
+  @@index([type])
 }
 
 model Student {
@@ -339,24 +356,34 @@ model AdmissionPayment {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   className     String
   amount        Int
+  paidAmount    Int?
   method        String
   status        String
   paymentStatus String    @default("Unpaid")
   session       String
   month         String
+  note          String?
   paidAt        DateTime?
+  updatedBy     String?
 
   studentId String  @db.ObjectId
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([session])
+  @@index([month])
+  @@index([className])
+  @@index([status])
+  @@index([paymentStatus])
 }
 
 model SalaryPayment {
   id            String    @id @default(auto()) @map("_id") @db.ObjectId
   transactionId String?
   amount        Int
+  paidAmount    Int?
   session       String
   month         String
   className     String
@@ -365,12 +392,19 @@ model SalaryPayment {
   paymentStatus String    @default("Unpaid")
   note          String?
   paidAt        DateTime?
+  updatedBy     String?
 
   studentId String  @db.ObjectId
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([session])
+  @@index([month])
+  @@index([className])
+  @@index([status])
+  @@index([paymentStatus])
 }
 
 model Teacher {
@@ -398,24 +432,35 @@ model Teacher {
   phone    String
   altPhone String?
 
-  currentInstitution String
-  currentSubject     String
+  sscSchool String
+  sscGroup  String
+  sscResult String
+  hscSchool String
+  hscGroup  String
+  hscResult String
+
+  degreeSchool  String
+  degreeResult  String
+  degreeSubject String
 
   level          String[]
-  availableTimes String[] @default([])
-  availableDays  String[] @default([])
-  availableSlots String[] @default([])
-  bookedSlots    String[] @default([])
+  availableTimes String[]     @default([])
+  availableDays  String[]     @default([])
+  availableSlots String[]     @default([])
+  bookedSlots    String[]     @default([])
   classRate      Int
+  batchClasses   BatchClass[]
 
   teacherStatus TeacherStatus?
 
   advances TeacherAdvance[]
   payments TeacherPayment[]
 
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  BatchClass BatchClass[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([session])
+  @@index([teacherId])
 }
 
 model TeacherStatus {
@@ -451,17 +496,18 @@ model Room {
   bookTimes      String[] @default([])
 
   houseId String @db.ObjectId
-  house   House  @relation(fields: [houseId], references: [id], onDelete: Cascade)
+  house   House  @relation(fields: [houseId], references: [id], onDelete: Restrict)
 
-  batches Batch[]
+  batches      Batch[]
+  batchClasses BatchClass[]
 
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  BatchClass BatchClass[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Batch {
   id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  session        String
   name           String
   batchClassName String
   roomName       String
@@ -471,10 +517,10 @@ model Batch {
   level          String
 
   roomId String @db.ObjectId
-  room   Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room   Room   @relation(fields: [roomId], references: [id], onDelete: Restrict)
 
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   students         Student[]
   attendence       Attendance[]
@@ -483,10 +529,15 @@ model Batch {
   homeWorkGroups   HomeworkGroup[]
   exams            Exam[]
   examResultsGroup ExamResultGroup[]
+  batchClasses     BatchClass[]
 
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
-  BatchClass BatchClass[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([session])
+  @@index([batchClassName])
+  @@index([roomName])
+  @@index([level])
 }
 
 model BatchClass {
@@ -497,18 +548,18 @@ model BatchClass {
 
   roomName String
   roomId   String @db.ObjectId
-  room     Room   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room     Room   @relation(fields: [roomId], references: [id], onDelete: Restrict)
 
   subjectId   String  @db.ObjectId
-  subject     Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject     Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
   subjectName String
 
   teacherId   String  @db.ObjectId
-  teacher     Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher     Teacher @relation(fields: [teacherId], references: [id], onDelete: Restrict)
   teacherName String
 
   batchId   String @db.ObjectId
-  batch     Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batch     Batch  @relation(fields: [batchId], references: [id], onDelete: Restrict)
   batchName String
 
   createdAt DateTime @default(now())
@@ -523,9 +574,10 @@ model TeacherAdvance {
   month        String
   amount       Int
   status       String @default("Pending")
+  updatedBy    String?
 
   teacherId String  @db.ObjectId
-  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: NoAction)
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -539,12 +591,18 @@ model HousePayment {
   amount        Int
   method        String
   paymentStatus String
+  updatedBy     String?
 
   houseId String @db.ObjectId
-  house   House  @relation(fields: [houseId], references: [id], onDelete: NoAction)
+  house   House  @relation(fields: [houseId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([session])
+  @@index([month])
+  @@index([paymentStatus])
+  @@index([houseName])
 }
 
 model UtilityPayment {
@@ -553,20 +611,25 @@ model UtilityPayment {
   amount  Int
   month   String
   session String
+  updatedBy String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
 
 model OtherPayment {
-  id      String @id @default(auto()) @map("_id") @db.ObjectId
-  name    String
-  amount  Int
-  month   String
-  session String
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  name      String
+  amount    Int
+  month     String
+  session   String
+  updatedBy String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([session])
+  @@index([month])
 }
 
 model TeacherPayment {
@@ -586,7 +649,7 @@ model TeacherPayment {
   advance       Int     @default(0)
 
   teacherId String  @db.ObjectId
-  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher   Teacher @relation(fields: [teacherId], references: [id], onDelete: Restrict)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -602,19 +665,25 @@ model Attendance {
   absentReason String?
 
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   studentId String  @db.ObjectId
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
 
   batchId String @db.ObjectId
-  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Restrict)
 
   attendenceGroupId String          @db.ObjectId
   attendenceGroup   AttendanceGroup @relation(fields: [attendenceGroupId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([session])
+  @@index([month])
+  @@index([date])
+  @@index([day])
+  @@index([status])
 }
 
 model AttendanceGroup {
@@ -629,15 +698,20 @@ model AttendanceGroup {
   absent  Int
 
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   batchId String @db.ObjectId
-  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Restrict)
 
   attendances Attendance[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([session])
+  @@index([month])
+  @@index([date])
+  @@index([day])
 }
 
 model Homework {
@@ -647,16 +721,16 @@ model Homework {
   feedback    String?
 
   studentId String  @db.ObjectId
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
 
   subjectId String  @db.ObjectId
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
   batchId String @db.ObjectId
-  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Restrict)
 
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   homeworkGroupId String        @db.ObjectId
   homeworkGroup   HomeworkGroup @relation(fields: [homeworkGroupId], references: [id], onDelete: Cascade)
@@ -674,13 +748,13 @@ model HomeworkGroup {
   unfinished Int      @default(0)
 
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   batchId String @db.ObjectId
-  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Restrict)
 
   subjectId String  @db.ObjectId
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
   homeworks Homework[]
 
@@ -702,7 +776,7 @@ model ExamCategory {
 model Exam {
   id      String   @id @default(auto()) @map("_id") @db.ObjectId
   name    String
-  topic   String
+  topic   String?
   date    DateTime
   total   Int
   cq      Int?
@@ -710,16 +784,16 @@ model Exam {
   written Int?
 
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   batchId String @db.ObjectId
-  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Restrict)
 
   subjectId String  @db.ObjectId
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
   examCategoryId String       @db.ObjectId
-  examCategory   ExamCategory @relation(fields: [examCategoryId], references: [id], onDelete: Cascade)
+  examCategory   ExamCategory @relation(fields: [examCategoryId], references: [id], onDelete: Restrict)
 
   examResultGroup ExamResultGroup?
 
@@ -727,6 +801,8 @@ model Exam {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([date])
 }
 
 model ExamResultGroup {
@@ -741,34 +817,36 @@ model ExamResultGroup {
   status       String @default("Unpublished")
 
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   batchId String @db.ObjectId
-  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  batch   Batch  @relation(fields: [batchId], references: [id], onDelete: Restrict)
 
   subjectId String  @db.ObjectId
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
   examCategoryId String       @db.ObjectId
-  examCategory   ExamCategory @relation(fields: [examCategoryId], references: [id], onDelete: Cascade)
+  examCategory   ExamCategory @relation(fields: [examCategoryId], references: [id], onDelete: Restrict)
 
   examId String @unique @db.ObjectId
-  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Restrict)
 
   examResults ExamResult[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status])
 }
 
 model ExamResult {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
   studentId String  @db.ObjectId
-  student   Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  student   Student @relation(fields: [studentId], references: [id], onDelete: Restrict)
 
   examId String @db.ObjectId
-  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+  exam   Exam   @relation(fields: [examId], references: [id], onDelete: Restrict)
 
   examResultGroupId String          @db.ObjectId
   examResultGroup   ExamResultGroup @relation(fields: [examResultGroupId], references: [id], onDelete: Cascade)
@@ -786,6 +864,8 @@ model ExamResult {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([status])
 }
 
 model Document {
@@ -799,13 +879,13 @@ model Document {
   noOfCopy     Int
 
   classNameId String    @db.ObjectId
-  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Cascade)
+  className   ClassName @relation(fields: [classNameId], references: [id], onDelete: Restrict)
 
   subjectId String  @db.ObjectId
-  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject   Subject @relation(fields: [subjectId], references: [id], onDelete: Restrict)
 
   userId String @db.ObjectId
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   printTasks PrintTask[]
 

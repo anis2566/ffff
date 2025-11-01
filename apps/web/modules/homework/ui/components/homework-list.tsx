@@ -18,6 +18,7 @@ import {
 import { ListActionButton } from "@/components/list-action-button";
 import { ListActionLink } from "@/components/list-action-link";
 import { useDeleteHomework } from "@/hooks/use-homework";
+import { usePermissions } from "@/hooks/use-user-permission";
 
 interface HomeworkWithRelation extends HomeworkGroup {
   className: {
@@ -37,6 +38,7 @@ interface HomeworkListProps {
 
 export const HomeworkList = ({ homeworks }: HomeworkListProps) => {
   const { onOpen } = useDeleteHomework();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -55,7 +57,7 @@ export const HomeworkList = ({ homeworks }: HomeworkListProps) => {
       </TableHeader>
       <TableBody>
         {homeworks.map((homework) => (
-          <TableRow key={homework.id}>
+          <TableRow key={homework.id} className="even:bg-muted">
             <TableCell className="hover:underline">
               <Link href={`/homework/${homework.id}`}>{homework.name}</Link>
             </TableCell>
@@ -72,11 +74,13 @@ export const HomeworkList = ({ homeworks }: HomeworkListProps) => {
                   title="View"
                   href={`/homework/${homework.id}`}
                   icon={Eye}
+                  hasPermission={hasPermission("homework", "read")}
                 />
                 <ListActionLink
                   title="Edit"
                   href={`/homework/edit/${homework.id}`}
                   icon={Edit}
+                  hasPermission={hasPermission("homework", "update")}
                 />
                 <ListActionButton
                   title="Send SMS"
@@ -88,6 +92,7 @@ export const HomeworkList = ({ homeworks }: HomeworkListProps) => {
                   title="Delete"
                   icon={Trash2}
                   onClick={() => onOpen(homework.id)}
+                  hasPermission={hasPermission("homework", "delete")}
                 />
               </ListActions>
             </TableCell>

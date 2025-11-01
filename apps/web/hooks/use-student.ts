@@ -75,13 +75,16 @@ export const useMarkAbsentStudent = create<MarkAbsentStudentState>((set) => ({
 interface MarkPesentStudentState {
   isOpen: boolean;
   studentId: string;
-  onOpen: (id: string) => void;
+  classNameId: string;
+  onOpen: (id: string, classNameId: string) => void;
   onClose: () => void;
 }
 
 export const useMarkPesentStudent = create<MarkPesentStudentState>((set) => ({
   isOpen: false,
   studentId: "",
-  onOpen: (id: string) => set({ isOpen: true, studentId: id }),
-  onClose: () => set({ isOpen: false, studentId: "" }),
+  classNameId: "",
+  onOpen: (id: string, classNameId: string) =>
+    set({ isOpen: true, studentId: id, classNameId }),
+  onClose: () => set({ isOpen: false, studentId: "", classNameId: "" }),
 }));

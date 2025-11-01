@@ -74,9 +74,11 @@ export const CreateClassModal = () => {
         await queryClient.invalidateQueries({
           queryKey: trpc.class.getAll.queryKey(),
         });
-
         form.reset(DEFAULT_VALUES);
-        onClose();
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );

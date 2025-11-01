@@ -1,5 +1,5 @@
-import { SearchParams } from "nuqs";
-import { Metadata } from "next";
+import type { Metadata } from "next";
+import type { SearchParams } from "nuqs";
 
 import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 
@@ -16,9 +16,9 @@ interface Props {
   searchParams: Promise<SearchParams>;
 }
 
-const Permissions = async ({ searchParams }: Props) => {
+const Permissions = async ({ searchParams }: Props) => { 
   const params = await getPermissions(searchParams);
-  prefetch(trpc.permission.getMany.queryOptions(params));
+  await prefetch(trpc.permission.getMany.queryOptions(params));
 
   return (
     <ContentLayout>

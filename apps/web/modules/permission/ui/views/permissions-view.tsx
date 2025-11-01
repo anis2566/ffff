@@ -7,19 +7,8 @@ import { ListCardWrapper } from "@workspace/ui/shared/list-card-wrapper";
 
 import { useGetPermissions } from "../../filters/use-get-permissions";
 import { useCreatePermission } from "@/hooks/use-permission";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@workspace/ui/components/table";
-import { Badge } from "@workspace/ui/components/badge";
-import { Button } from "@workspace/ui/components/button";
-import { Edit } from "lucide-react";
-import { CardWrapper } from "@workspace/ui/shared/card-wrapper";
 import { PermissionList } from "../components/permission-list";
+import { Filter } from "../components/filter";
 
 export const PermissionsView = () => {
   const trpc = useTRPC();
@@ -30,6 +19,8 @@ export const PermissionsView = () => {
     trpc.permission.getMany.queryOptions(filters)
   );
 
+  const { permissions = [] } = data;
+
   return (
     <ListCardWrapper
       title="Manage Permissions"
@@ -37,7 +28,8 @@ export const PermissionsView = () => {
       actionButtons
       onClickAction={onOpen}
     >
-      <PermissionList permissions={data?.permissions || []} />
+      <Filter />
+      <PermissionList permissions={permissions} />
     </ListCardWrapper>
   );
 };

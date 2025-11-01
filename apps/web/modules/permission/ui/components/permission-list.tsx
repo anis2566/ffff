@@ -17,7 +17,6 @@ import { useEditPermission } from "@/hooks/use-permission";
 interface PermissionListProps {
   permissions: {
     module: string;
-    name: string;
     permissions: Omit<
       {
         roles: {

@@ -1,9 +1,20 @@
 import type { TRPCRouterRecord } from "@trpc/server";
+import type { Prisma } from "@workspace/db";
 import z from "zod";
 
-import {  permissionProcedure, protectedProcedure } from "../trpc";
+import { permissionProcedure, protectedProcedure } from "../trpc";
 
 import { RoomSchema } from "@workspace/utils/schemas";
+
+// Shared error handler
+const handleError = (error: unknown, operation: string) => {
+  console.error(`Error ${operation}:`, error);
+  return { success: false, message: "Internal Server Error" };
+};
+
+// Build search filter with proper typing
+const buildSearchFilter = (search?: string | null): Prisma.RoomWhereInput =>
+  search ? { name: { contains: search, mode: "insensitive" as const } } : {};
 
 export const roomRouter = {
   createOne: permissionProcedure("room", "create")
@@ -12,17 +23,16 @@ export const roomRouter = {
       const { name, capacity, availableTimes, houseId } = input;
 
       try {
-        const [room, house] = await Promise.all([
+        const [existingRoom, house] = await Promise.all([
           ctx.db.room.findFirst({
             where: {
               name,
               houseId,
             },
+            select: { id: true },
           }),
           ctx.db.house.findUnique({
-            where: {
-              id: houseId,
-            },
+            where: { id: houseId },
             select: {
               roomCount: true,
               _count: {
@@ -34,7 +44,7 @@ export const roomRouter = {
           }),
         ]);
 
-        if (room) {
+        if (existingRoom) {
           return { success: false, message: "Room already exists" };
         }
 
@@ -42,9 +52,7 @@ export const roomRouter = {
           return { success: false, message: "House not found" };
         }
 
-        const isHouseFull = house?._count.rooms >= house?.roomCount;
-
-        if (isHouseFull) {
+        if (house._count.rooms >= house.roomCount) {
           return { success: false, message: "House is full" };
         }
 
@@ -57,12 +65,12 @@ export const roomRouter = {
           },
         });
 
-        return { success: true, message: "Room created" };
+        return { success: true, message: "Room created successfully" };
       } catch (error) {
-        console.error("Error creating room", error);
-        return { success: false, message: "Internal Server Error" };
+        return handleError(error, "creating room");
       }
     }),
+
   updateOne: permissionProcedure("room", "update")
     .input(
       z.object({
@@ -74,14 +82,6 @@ export const roomRouter = {
       const { id, name, capacity, availableTimes, houseId } = input;
 
       try {
-        const existingRoom = await ctx.db.room.findUnique({
-          where: { id },
-        });
-
-        if (!existingRoom) {
-          return { success: false, message: "Room not found" };
-        }
-
         await ctx.db.room.update({
           where: { id },
           data: {
@@ -92,36 +92,42 @@ export const roomRouter = {
           },
         });
 
-        return { success: true, message: "Room updated" };
+        return { success: true, message: "Room updated successfully" };
       } catch (error) {
-        console.error("Error updating room", error);
-        return { success: false, message: "Internal Server Error" };
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "P2025"
+        ) {
+          return { success: false, message: "Room not found" };
+        }
+        return handleError(error, "updating room");
       }
     }),
+
   deleteOne: permissionProcedure("room", "delete")
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
-      const roomId = input;
-
       try {
-        const existingRoom = await ctx.db.room.findUnique({
-          where: { id: roomId },
+        await ctx.db.room.delete({
+          where: { id: input },
         });
 
-        if (!existingRoom) {
+        return { success: true, message: "Room deleted successfully" };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "P2025"
+        ) {
           return { success: false, message: "Room not found" };
         }
-
-        await ctx.db.room.delete({
-          where: { id: roomId },
-        });
-
-        return { success: true, message: "Room deleted" };
-      } catch (error) {
-        console.error("Error deleting room", error);
-        return { success: false, message: "Internal Server Error" };
+        return handleError(error, "deleting room");
       }
     }),
+
   forSelect: protectedProcedure
     .input(
       z.object({
@@ -132,14 +138,7 @@ export const roomRouter = {
       const { query } = input;
 
       const rooms = await ctx.db.room.findMany({
-        where: {
-          ...(query && {
-            name: {
-              contains: query,
-              mode: "insensitive",
-            },
-          }),
-        },
+        where: buildSearchFilter(query),
         select: {
           id: true,
           name: true,
@@ -149,24 +148,24 @@ export const roomRouter = {
 
       return rooms;
     }),
-  getOne: protectedProcedure.input(z.string()).query(async ({ input, ctx }) => {
-    const roomId = input;
 
-    const roomData = await ctx.db.room.findUnique({
-      where: { id: roomId },
+  getOne: protectedProcedure.input(z.string()).query(async ({ input, ctx }) => {
+    const room = await ctx.db.room.findUnique({
+      where: { id: input },
     });
 
-    if (!roomData) {
+    if (!room) {
       throw new Error("Room not found");
     }
 
-    return roomData;
+    return room;
   }),
+
   getMany: permissionProcedure("room", "read")
     .input(
       z.object({
-        page: z.number(),
-        limit: z.number().min(1).max(100),
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(10),
         sort: z.string().nullish(),
         search: z.string().nullish(),
       })
@@ -174,21 +173,21 @@ export const roomRouter = {
     .query(async ({ input, ctx }) => {
       const { page, limit, sort, search } = input;
 
+      const where = buildSearchFilter(search);
+
       const [rooms, totalCount] = await Promise.all([
         ctx.db.room.findMany({
-          where: {
-            ...(search && {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
-            }),
-          },
+          where,
           include: {
             house: {
               select: {
                 name: true,
                 id: true,
+              },
+            },
+            _count: {
+              select: {
+                batches: true,
               },
             },
           },
@@ -198,21 +197,14 @@ export const roomRouter = {
           take: limit,
           skip: (page - 1) * limit,
         }),
-        ctx.db.room.count({
-          where: {
-            ...(search && {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
-            }),
-          },
-        }),
+        ctx.db.room.count({ where }),
       ]);
 
       return {
         rooms,
         totalCount,
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
       };
     }),
 } satisfies TRPCRouterRecord;

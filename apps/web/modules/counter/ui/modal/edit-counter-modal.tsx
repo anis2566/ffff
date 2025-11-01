@@ -25,22 +25,34 @@ import {
 
 import { CounterSchema, CounterSchemaType } from "@workspace/utils/schemas";
 
-import { useGetCounters } from "../../filters/use-get-counters";
 import { useEditCounter } from "@/hooks/use-counter";
+import { Session } from "@workspace/utils/constant";
 
 export const EditCounterModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
-  const { isOpen, onClose, counterId, type, value } = useEditCounter();
+  const { isOpen, onClose, counterId, session, type, value } = useEditCounter();
   const trpc = useTRPC();
-  const [filters] = useGetCounters();
   const queryClient = useQueryClient();
 
+  const form = useForm<CounterSchemaType>({
+    resolver: zodResolver(CounterSchema),
+    defaultValues: {
+      session: "",
+      type: "",
+      value: "",
+    },
+  });
+
   useEffect(() => {
-    form.setValue("type", type);
-    form.setValue("value", value);
-  }, [type, value]);
+    if (isOpen) {
+      form.reset({
+        session,
+        type,
+        value,
+      });
+    }
+  }, [isOpen, form, session, type, value]);
 
   const { data: classes } = useQuery(
     trpc.class.forSelect.queryOptions({ search: "" })
@@ -48,46 +60,47 @@ export const EditCounterModal = () => {
 
   const { mutate: updateCounter, isPending } = useMutation(
     trpc.counter.updateOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.counter.getMany.queryOptions({ ...filters })
-        );
-        onClose();
+        queryClient.invalidateQueries({
+          queryKey: trpc.counter.getMany.queryKey(),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
 
-  const form = useForm<CounterSchemaType>({
-    resolver: zodResolver(CounterSchema),
-    defaultValues: {
-      type: "",
-      value: "",
-    },
-  });
-
   const onSubmit = (data: CounterSchemaType) => {
-    setButtonState("loading");
     updateCounter({
       ...data,
       id: counterId,
     });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Counter</DialogTitle>
@@ -98,6 +111,15 @@ export const EditCounterModal = () => {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormSelect
+              form={form}
+              name="session"
+              label="Session"
+              placeholder="Select session"
+              options={Session}
+              triggerClassName="w-full"
+            />
+
             <FormSelect
               form={form}
               name="type"
@@ -124,10 +146,6 @@ export const EditCounterModal = () => {
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Updating..."
-              successText="Updated!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

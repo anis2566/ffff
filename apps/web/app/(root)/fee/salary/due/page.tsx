@@ -4,8 +4,8 @@ import { Metadata } from "next";
 import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 
 import { ContentLayout } from "@/modules/ui/layout/content-layout";
-import { getDuePayments } from "@/modules/fee/filters/get-due-payments";
-import { DueSalaryPaymentsView } from "@/modules/fee/ui/view/due-salary-payments-view";
+import { getDuePayments } from "@/modules/salary-payment/filters/get-due-payments";
+import { DueSalaryPaymentsView } from "@/modules/salary-payment/ui/view/due-salary-payments-view";
 
 export const metadata: Metadata = {
   title: "Due Payments",

@@ -17,6 +17,7 @@ import { ListActionButton } from "@/components/list-action-button";
 import { ListActionLink } from "@/components/list-action-link";
 import Link from "next/link";
 import { useDeleteStudentAttendance } from "@/hooks/use-student-attendance";
+import { usePermissions } from "@/hooks/use-user-permission";
 
 interface AttendanceWithRelations extends AttendanceGroup {
   className: {
@@ -33,6 +34,7 @@ interface AttendanceListProps {
 
 export const AttendanceList = ({ attendances }: AttendanceListProps) => {
   const { onOpen } = useDeleteStudentAttendance();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -49,7 +51,7 @@ export const AttendanceList = ({ attendances }: AttendanceListProps) => {
       </TableHeader>
       <TableBody>
         {attendances.map((attendance) => (
-          <TableRow key={attendance.id}>
+          <TableRow key={attendance.id} className="even:bg-muted">
             <TableCell className="hover:underline">
               <Link href={`/attendance/student/${attendance.id}`}>
                 {attendance.name}
@@ -66,22 +68,26 @@ export const AttendanceList = ({ attendances }: AttendanceListProps) => {
                   title="View"
                   href={`/attendance/student/${attendance.id}`}
                   icon={Eye}
+                  hasPermission={hasPermission("student_attendance", "read")}
                 />
                 <ListActionLink
                   title="Edit"
                   href={`/attendance/student/edit/${attendance.id}`}
                   icon={Edit}
+                  hasPermission={hasPermission("student_attendance", "update")}
                 />
                 <ListActionButton
                   title="Send SMS"
                   icon={Send}
                   onClick={() => {}}
+                  hasPermission={hasPermission("student_attendance", "update")}
                 />
                 <ListActionButton
                   title="Delete"
                   icon={Trash2}
                   isDanger
                   onClick={() => onOpen(attendance.id)}
+                  hasPermission={hasPermission("student_attendance", "delete")}
                 />
               </ListActions>
             </TableCell>

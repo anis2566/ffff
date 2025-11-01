@@ -1,7 +1,7 @@
 "use client";
 
 import { Filter } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -20,75 +20,89 @@ import {
   DEFAULT_SORT_OPTIONS,
   GROUPS,
   LEVELS,
+  Session,
 } from "@workspace/utils/constant";
 import { ResetFilter } from "@workspace/ui/shared/reset-filter";
 import { Separator } from "@workspace/ui/components/separator";
 
 import { useGetSubjects } from "../../filters/use-get-subjects";
 
+const LEVEL_OPTIONS = Object.values(LEVELS).map((v) => ({
+  label: v,
+  value: v,
+}));
+const GROUP_OPTIONS = Object.values(GROUPS).map((v) => ({
+  label: v,
+  value: v,
+}));
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
+
 export const MobileFilter = () => {
   const [open, setOpen] = useState(false);
-
   const [filter, setFilter] = useGetSubjects();
-
-  const handleSortChange = (value: string) => {
-    try {
-      setFilter({ sort: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleLimitChange = (value: string) => {
-    try {
-      setFilter({ limit: parseInt(value) });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleLevelChange = (value: string) => {
-    try {
-      setFilter({ level: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleGroupChange = (value: string) => {
-    try {
-      setFilter({ group: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
 
   const hasAnyModified =
     !!filter.search ||
-    filter.limit !== 5 ||
-    filter.page !== 1 ||
-    filter.sort !== "" ||
-    filter.group !== "" ||
-    filter.level !== "";
+    filter.limit !== DEFAULT_PAGE_SIZE ||
+    filter.page !== DEFAULT_PAGE ||
+    !!filter.sort ||
+    !!filter.level ||
+    !!filter.group ||
+    !!filter.session;
 
-  const handleClear = () => {
+  const createFilterHandler = useCallback(
+    (key: string, transform?: (value: string) => any) => (value: string) => {
+      try {
+        setFilter({ [key]: transform ? transform(value) : value });
+      } catch (error) {
+        console.error(`Error setting ${key}:`, error);
+      } finally {
+        setOpen(false);
+      }
+    },
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    () => createFilterHandler("sort"),
+    [createFilterHandler]
+  );
+
+  const handleLimitChange = useCallback(
+    () => createFilterHandler("limit", (v) => parseInt(v, 10)),
+    [createFilterHandler]
+  );
+
+  const handleLevelChange = useCallback(
+    () => createFilterHandler("level"),
+    [createFilterHandler]
+  );
+
+  const handleSessionChange = useCallback(
+    () => createFilterHandler("session"),
+    [createFilterHandler]
+  );
+
+  const handleGroupChange = useCallback(
+    () => createFilterHandler("group"),
+    [createFilterHandler]
+  );
+
+  const handleClear = useCallback(() => {
     setFilter({
       search: "",
       limit: DEFAULT_PAGE_SIZE,
       page: DEFAULT_PAGE,
       sort: "",
-      group: "",
       level: "",
+      session: "",
+      group: "",
     });
-  };
+  }, [setFilter]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -99,7 +113,7 @@ export const MobileFilter = () => {
       </DrawerTrigger>
       <DrawerContent className="p-4">
         <DrawerHeader>
-          <DrawerTitle />
+          <DrawerTitle>Filter</DrawerTitle>
         </DrawerHeader>
         <div className="flex items-center justify-between">
           <ResetFilter hasModified={hasAnyModified} handleReset={handleClear} />
@@ -115,7 +129,7 @@ export const MobileFilter = () => {
             value={filter.level}
             onChange={handleLevelChange}
             placeholder="Level"
-            options={Object.values(LEVELS).map((v) => ({ label: v, value: v }))}
+            options={LEVEL_OPTIONS}
             className="max-w-full"
             showInMobile
           />
@@ -123,7 +137,15 @@ export const MobileFilter = () => {
             value={filter.group}
             onChange={handleGroupChange}
             placeholder="Group"
-            options={Object.values(GROUPS).map((v) => ({ label: v, value: v }))}
+            options={GROUP_OPTIONS}
+            className="max-w-full"
+            showInMobile
+          />
+          <FilterSelect
+            value={filter.session}
+            onChange={handleSessionChange}
+            placeholder="Session"
+            options={Session}
             className="max-w-full"
             showInMobile
           />

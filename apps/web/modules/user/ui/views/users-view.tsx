@@ -10,6 +10,7 @@ import { MobilePagination } from "@workspace/ui/shared/mobile-pagination";
 import { useGetUsers } from "../../filters/use-get-users";
 import { UserList } from "../components/user-list";
 import { Filter } from "../components/filter";
+import { useCallback } from "react";
 
 export const UsersView = () => {
   const trpc = useTRPC();
@@ -17,21 +18,28 @@ export const UsersView = () => {
 
   const { data } = useSuspenseQuery(trpc.user.getMany.queryOptions(filters));
 
+  const { users = [], totalCount = 0 } = data;
+
+  const handlePageChange = useCallback(
+    (page: number) => setFilters({ page }),
+    [setFilters]
+  );
+
   return (
-    <ListCardWrapper title="Manage User" value={data?.totalCount}>
+    <ListCardWrapper title="Manage User" value={totalCount}>
       <Filter />
-      <UserList users={data?.users} />
+      <UserList users={users} />
       <DesktopPagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
       <MobilePagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
     </ListCardWrapper>
   );

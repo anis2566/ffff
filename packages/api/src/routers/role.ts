@@ -150,6 +150,13 @@ export const roleRouter = {
               },
             }),
           },
+          include: {
+            _count: {
+              select: {
+                permissions: true,
+              },
+            },
+          },
           orderBy: {
             createdAt: sort === "asc" ? "asc" : "desc",
           },

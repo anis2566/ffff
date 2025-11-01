@@ -10,6 +10,7 @@ import { DesktopPagination } from "@workspace/ui/shared/desktop-pagination";
 import { useGetPayments } from "../../filters/use-get-payments";
 import { PaymentList } from "../components/payment-list";
 import { Filter } from "../components/filter";
+import { useCallback } from "react";
 
 export const HousePaymentsView = () => {
   const [filters, setFilters] = useGetPayments();
@@ -21,22 +22,29 @@ export const HousePaymentsView = () => {
     })
   );
 
+  const { payments = [], totalCount = 0 } = data;
+
+  const handlePageChange = useCallback(
+    (page: number) => setFilters({ page }),
+    [setFilters]
+  );
+
   return (
     <div className="flex-1 flex flex-col gap-6">
-      <ListCardWrapper title="Manage Payments" value={data?.totalCount}>
+      <ListCardWrapper title="Manage Payments" value={totalCount}>
         <Filter />
-        <PaymentList payments={data?.payments} />
+        <PaymentList payments={payments} />
         <DesktopPagination
-          totalCount={data?.totalCount}
+          totalCount={totalCount}
           currentPage={filters.page}
           pageSize={filters.limit}
-          onPageChange={(page) => setFilters({ page })}
+          onPageChange={handlePageChange}
         />
         <MobilePagination
-          totalCount={data?.totalCount}
+          totalCount={totalCount}
           currentPage={filters.page}
           pageSize={filters.limit}
-          onPageChange={(page) => setFilters({ page })}
+          onPageChange={handlePageChange}
         />
       </ListCardWrapper>
     </div>

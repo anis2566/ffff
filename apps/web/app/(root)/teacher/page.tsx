@@ -1,5 +1,5 @@
-import { SearchParams } from "nuqs";
-import { Metadata } from "next";
+import type { Metadata } from "next";
+import type { SearchParams } from "nuqs";
 
 import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 
@@ -18,7 +18,7 @@ interface Props {
 
 const Teachers = async ({ searchParams }: Props) => {
   const params = await getTeachers(searchParams);
-  prefetch(trpc.teacher.getMany.queryOptions(params));
+  await prefetch(trpc.teacher.getMany.queryOptions(params));
 
   return (
     <ContentLayout>

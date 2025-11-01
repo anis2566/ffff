@@ -1,14 +1,14 @@
 import type { TRPCRouterRecord } from "@trpc/server";
 import z from "zod";
 
-import {
-  adminProcedure,
-  permissionProcedure,
-  protectedProcedure,
-} from "../trpc";
+import { permissionProcedure, protectedProcedure } from "../trpc";
 
 import { TeacherSchema } from "@workspace/utils/schemas";
-import { splitTimeRange, TEACHER_STATUS } from "@workspace/utils/constant";
+import {
+  currentSession,
+  splitTimeRange,
+  TEACHER_STATUS,
+} from "@workspace/utils/constant";
 
 export const teacherRouter = {
   createOne: permissionProcedure("teacher", "create")
@@ -128,6 +128,49 @@ export const teacherRouter = {
         return { success: false, message: "Internal Server Error" };
       }
     }),
+  deactive: permissionProcedure("teacher", "update")
+    .input(
+      z.object({
+        teacherId: z.string(),
+        reason: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { teacherId, reason } = input;
+
+      try {
+        await ctx.db.teacherStatus.update({
+          where: { teacherId },
+          data: { status: TEACHER_STATUS.Absent, absentReason: reason },
+        });
+
+        return { success: true, message: "Teacher deactivated" };
+      } catch (error) {
+        console.error("Error deactivating teacher", error);
+        return { success: false, message: "Internal Server Error" };
+      }
+    }),
+  active: permissionProcedure("teacher", "update")
+    .input(
+      z.object({
+        teacherId: z.string(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const { teacherId } = input;
+
+      try {
+        await ctx.db.teacherStatus.update({
+          where: { teacherId },
+          data: { status: TEACHER_STATUS.Present },
+        });
+
+        return { success: true, message: "Teacher activated" };
+      } catch (error) {
+        console.error("Error deactivating teacher", error);
+        return { success: false, message: "Internal Server Error" };
+      }
+    }),
   deleteOne: permissionProcedure("teacher", "delete")
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
@@ -164,6 +207,12 @@ export const teacherRouter = {
 
       const teachers = await ctx.db.teacher.findMany({
         where: {
+          session: {
+            in: currentSession,
+          },
+          teacherStatus: {
+            status: TEACHER_STATUS.Present,
+          },
           ...(name && {
             name: {
               contains: name,
@@ -214,7 +263,12 @@ export const teacherRouter = {
 
       const teachers = await ctx.db.teacher.findMany({
         where: {
-          session: new Date().getFullYear().toString(),
+          session: {
+            in: currentSession,
+          },
+          teacherStatus: {
+            status: TEACHER_STATUS.Present,
+          },
           level: {
             hasSome: [level],
           },
@@ -239,7 +293,7 @@ export const teacherRouter = {
 
       const teachers = await ctx.db.teacher.findMany({
         where: {
-          BatchClass: {
+          batchClasses: {
             some: {
               batchId,
             },
@@ -302,7 +356,9 @@ export const teacherRouter = {
               id,
             }),
             ...(status && {
-              status,
+              teacherStatus: {
+                status,
+              },
             }),
           },
           include: {
@@ -329,7 +385,9 @@ export const teacherRouter = {
               id,
             }),
             ...(status && {
-              status,
+              teacherStatus: {
+                status,
+              },
             }),
           },
         }),

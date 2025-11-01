@@ -5,7 +5,10 @@ const nextConfig = {
   transpilePackages: [
     "@workspace/db",
     "@workspace/ui",
-    "@workspace/notifications",
+    "@workspace/auth",
+    "@workspace/api",
+    "@workspace/ui",
+    "@workspace/utils",
   ],
 
   typescript: {

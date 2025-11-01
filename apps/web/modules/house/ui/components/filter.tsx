@@ -1,5 +1,7 @@
 "use client";
 
+import { useCallback, useMemo } from "react";
+
 import {
   DEFAULT_PAGE,
   DEFAULT_PAGE_SIZE,
@@ -14,23 +16,47 @@ import { ResetFilter } from "@workspace/ui/shared/reset-filter";
 import { useGetHouses } from "../../filters/use-get-houses";
 import { MobileFilter } from "./mobile-filter";
 
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
+
 export const Filter = () => {
   const [filter, setFilter] = useGetHouses();
 
-  const hasAnyModified =
-    !!filter.search ||
-    filter.limit !== 5 ||
-    filter.page !== 1 ||
-    filter.sort !== "";
+  const hasAnyModified = useMemo(
+    () =>
+      !!filter.search ||
+      filter.limit !== DEFAULT_PAGE_SIZE ||
+      filter.page !== DEFAULT_PAGE ||
+      !!filter.sort,
+    [filter.search, filter.limit, filter.page, filter.sort]
+  );
 
-  const handleClear = () => {
+  const handleSearchChange = useCallback(
+    (value: string) => setFilter({ search: value }),
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    (value: string) => setFilter({ sort: value }),
+    [setFilter]
+  );
+
+  const handleLimitChange = useCallback(
+    (value: string) => setFilter({ limit: parseInt(value, 10) }),
+    [setFilter]
+  );
+
+  const handleClear = useCallback(() => {
     setFilter({
       search: "",
       limit: DEFAULT_PAGE_SIZE,
       page: DEFAULT_PAGE,
       sort: "",
     });
-  };
+  }, [setFilter]);
 
   return (
     <div className="flex-1 flex items-center justify-between gap-x-3">
@@ -39,26 +65,23 @@ export const Filter = () => {
           type="search"
           placeholder="search..."
           value={filter.search}
-          onChange={(value: string) => setFilter({ search: value })}
+          onChange={handleSearchChange}
           showInMobile
           className="max-w-sm"
         />
         <FilterSelect
           value={filter.sort}
-          onChange={(value: string) => setFilter({ sort: value })}
+          onChange={handleSortChange}
           placeholder="Sort"
-          options={Object.values(DEFAULT_SORT_OPTIONS)}
-          className="max-w-[100px]"
+          options={SORT_OPTIONS}
+          className="max-w-[120px]"
         />
         <FilterSelect
-          value={filter.limit.toString()}
-          onChange={(value: string) => setFilter({ limit: parseInt(value) })}
+          value={""}
+          onChange={handleLimitChange}
           placeholder="Limit"
-          options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-            label: v.toString(),
-            value: v.toString(),
-          }))}
-          className="max-w-[100px]"
+          options={PAGE_SIZE_OPTIONS}
+          className="max-w-[120px]"
         />
       </div>
       <div className="flex items-center gap-x-2">

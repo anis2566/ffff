@@ -16,6 +16,7 @@ import {
 import { ListActionButton } from "@/components/list-action-button";
 
 import { useDeleteCategory, useEditCategory } from "@/hooks/use-category";
+import { usePermissions } from "@/hooks/use-user-permission";
 
 interface CategoryListProps {
   categories: ExamCategory[];
@@ -24,6 +25,7 @@ interface CategoryListProps {
 export const CategoryList = ({ categories }: CategoryListProps) => {
   const { onOpen } = useDeleteCategory();
   const { onOpen: onEdit } = useEditCategory();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -45,12 +47,14 @@ export const CategoryList = ({ categories }: CategoryListProps) => {
                   title="Edit"
                   icon={Edit}
                   onClick={() => onEdit(category.id, category.name)}
+                  hasPermission={hasPermission("exam_category", "update")}
                 />
                 <ListActionButton
                   title="Delete"
                   icon={Trash2}
                   isDanger
                   onClick={() => onOpen(category.id)}
+                  hasPermission={hasPermission("exam_category", "delete")}
                 />
               </ListActions>
             </TableCell>

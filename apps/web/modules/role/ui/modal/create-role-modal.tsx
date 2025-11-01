@@ -27,25 +27,35 @@ import { RoleSchema, RoleSchemaType } from "@workspace/utils/schemas";
 import { useCreateRole } from "@/hooks/use-role";
 import { FormTextarea } from "@workspace/ui/shared/form-textarea";
 
+const DEFAULT_VALUES: RoleSchemaType = {
+  name: "",
+  description: "",
+};
+
 export const CreateRoleModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, onClose } = useCreateRole();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
+  const form = useForm<RoleSchemaType>({
+    resolver: zodResolver(RoleSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
+
   const { mutate: createRole, isPending } = useMutation(
     trpc.role.createOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
@@ -54,30 +64,27 @@ export const CreateRoleModal = () => {
         queryClient.invalidateQueries({
           queryKey: trpc.role.getMany.queryKey(),
         });
-        form.reset({
-          name: "",
-          description: "",
-        });
-        onClose();
+        form.reset(DEFAULT_VALUES);
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
 
-  const form = useForm<RoleSchemaType>({
-    resolver: zodResolver(RoleSchema),
-    defaultValues: {
-      name: "",
-      description: "",
-    },
-  });
-
   const onSubmit = (data: RoleSchemaType) => {
-    setButtonState("loading");
     createRole(data);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Set up your role</DialogTitle>
@@ -103,10 +110,6 @@ export const CreateRoleModal = () => {
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Submitting..."
-              successText="Submitted!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

@@ -4,6 +4,9 @@ import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "@workspace/utils/constant";
 
 export const useGetSubjects = () => {
   return useQueryStates({
+    session: parseAsString
+      .withDefault("")
+      .withOptions({ clearOnDefault: true }),
     search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
     level: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
     group: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),

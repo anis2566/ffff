@@ -104,8 +104,9 @@ export const CreatePermissionModal = () => {
                 label: module.name,
               }))}
               onClick={(module) => {
-                (console.log(modules.find((m) => m.name === module)!.actions),
-                  setActions(modules.find((m) => m.name === module)!.actions));
+                setActions(
+                  modules.find((m) => m.name === module)?.actions ?? []
+                );
               }}
               disabled={isPending}
             />

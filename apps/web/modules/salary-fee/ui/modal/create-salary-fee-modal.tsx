@@ -24,19 +24,33 @@ import {
 } from "@workspace/ui/shared/loadign-button";
 
 import { SalaryFeeSchema, SalaryFeeSchemaType } from "@workspace/utils/schemas";
-import { ADMISSION_TYPE, GROUPS } from "@workspace/utils/constant";
+import { GROUPS, Session } from "@workspace/utils/constant";
 
-import { useGetSalaryFees } from "../../filters/use-get-salary-fees";
 import { useCreateSalaryFee } from "@/hooks/use-salary-fee";
+
+const DEFAULT_VALUES: SalaryFeeSchemaType = {
+  session: "",
+  classNameId: "",
+  amount: "",
+  group: "",
+};
+
+const GROUP_OPTIONS = Object.values(GROUPS).map((group) => ({
+  label: group,
+  value: group,
+}));
 
 export const CreateSalaryFeeModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, onClose } = useCreateSalaryFee();
   const trpc = useTRPC();
-  const [filters] = useGetSalaryFees();
   const queryClient = useQueryClient();
+
+  const form = useForm<SalaryFeeSchemaType>({
+    resolver: zodResolver(SalaryFeeSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
 
   const { data: classes } = useQuery(
     trpc.class.forSelect.queryOptions({ search: "" })
@@ -44,51 +58,45 @@ export const CreateSalaryFeeModal = () => {
 
   const { mutate: createSalaryFee, isPending } = useMutation(
     trpc.salaryFee.createOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.salaryFee.getMany.queryOptions({ ...filters })
-        );
-        form.reset({
-          type: "",
-          classNameId: "",
-          amount: "",
-          group: "",
+        queryClient.invalidateQueries({
+          queryKey: trpc.salaryFee.getMany.queryKey(),
         });
-        onClose();
+        form.reset(DEFAULT_VALUES);
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
 
-  const form = useForm<SalaryFeeSchemaType>({
-    resolver: zodResolver(SalaryFeeSchema),
-    defaultValues: {
-      type: "",
-      classNameId: "",
-      amount: "",
-      group: "",
-    },
-  });
-
   const onSubmit = (data: SalaryFeeSchemaType) => {
-    setButtonState("loading");
     createSalaryFee(data);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Set up your fee</DialogTitle>
@@ -100,15 +108,13 @@ export const CreateSalaryFeeModal = () => {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormSelect
               form={form}
-              name="type"
-              label="Type"
-              placeholder="Select type"
-              disabled={isPending}
-              options={Object.values(ADMISSION_TYPE).map((type) => ({
-                label: type,
-                value: type,
-              }))}
+              name="session"
+              label="Session"
+              placeholder="Select session"
+              options={Session}
+              triggerClassName="w-full"
             />
+
             <FormSelect
               form={form}
               name="classNameId"
@@ -128,10 +134,7 @@ export const CreateSalaryFeeModal = () => {
               label="Group"
               placeholder="Select group"
               disabled={isPending}
-              options={Object.values(GROUPS).map((group) => ({
-                label: group,
-                value: group,
-              }))}
+              options={GROUP_OPTIONS}
             />
             <FormInput
               form={form}
@@ -142,10 +145,6 @@ export const CreateSalaryFeeModal = () => {
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Submitting..."
-              successText="Submitted!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

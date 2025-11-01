@@ -10,6 +10,7 @@ import { MobilePagination } from "@workspace/ui/shared/mobile-pagination";
 import { useGetStudentAttendances } from "../../filters/use-get-student-attendances";
 import { AttendanceList } from "../components/attendance-list";
 import { Filter } from "../components/filter";
+import { useCallback } from "react";
 
 export const StudentAttendancesView = () => {
   const trpc = useTRPC();
@@ -19,21 +20,28 @@ export const StudentAttendancesView = () => {
     trpc.studentAttendance.getMany.queryOptions(filters)
   );
 
+  const { attendances = [], totalCount = 0 } = data;
+
+  const handlePageChange = useCallback(
+    (page: number) => setFilters({ page }),
+    [setFilters]
+  );
+
   return (
-    <ListCardWrapper title="Manage Attendance" value={data?.totalCount}>
+    <ListCardWrapper title="Manage Attendance" value={totalCount}>
       <Filter />
-      <AttendanceList attendances={data?.attendances || []} />
+      <AttendanceList attendances={attendances} />
       <DesktopPagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
       <MobilePagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
     </ListCardWrapper>
   );

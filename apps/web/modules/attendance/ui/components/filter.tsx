@@ -18,6 +18,17 @@ import { FilterCalendar } from "@workspace/ui/shared/filter-calendar";
 
 import { useGetStudentAttendances } from "../../filters/use-get-student-attendances";
 import { MobileFilter } from "./mobile-filter";
+import { useCallback } from "react";
+
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
+const MONTH_OPTIONS = Object.values(MONTH).map((v) => ({
+  label: v,
+  value: v,
+}));
 
 export const Filter = () => {
   const [filter, setFilter] = useGetStudentAttendances();
@@ -30,8 +41,14 @@ export const Filter = () => {
     ],
   });
 
-  const classes = classesQuery.data;
-  const batches = batchesQuery.data;
+  const classes = (classesQuery.data ?? []).map((v) => ({
+    label: v.name,
+    value: v.id,
+  }));
+  const batches = (batchesQuery.data ?? []).map((v) => ({
+    label: v.name,
+    value: v.id,
+  }));
 
   const hasAnyModified =
     filter.limit !== 5 ||
@@ -43,7 +60,45 @@ export const Filter = () => {
     filter.classNameId !== "" ||
     filter.date !== "";
 
-  const handleClear = () => {
+  const handleMonthChange = useCallback(
+    (value: string) => setFilter({ month: value }),
+    [setFilter]
+  );
+
+  const handleBatchChange = useCallback(
+    (value: string) => setFilter({ batchId: value }),
+    [setFilter]
+  );
+
+  const handleClassChange = useCallback(
+    (value: string) => setFilter({ classNameId: value }),
+    [setFilter]
+  );
+
+  const handleSessionChange = useCallback(
+    (value: string) => setFilter({ session: value }),
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    (value: string) => setFilter({ sort: value }),
+    [setFilter]
+  );
+
+  const handleLimitChange = useCallback(
+    (value: string) => setFilter({ limit: parseInt(value, 10) }),
+    [setFilter]
+  );
+
+  const selectedDate = filter.date ? new Date(filter.date) : undefined;
+
+  const handleDateChange = (date: Date | undefined) => {
+    setFilter({
+      date: date ? date.toISOString() : "",
+    });
+  };
+
+  const handleClear = useCallback(() => {
     setFilter({
       limit: DEFAULT_PAGE_SIZE,
       page: DEFAULT_PAGE,
@@ -54,37 +109,23 @@ export const Filter = () => {
       classNameId: "",
       date: "",
     });
-  };
-
-  const selectedDate = filter.date ? new Date(filter.date) : undefined;
-
-  const handleDateChange = (date: Date | undefined) => {
-    setFilter({
-      date: date ? date.toISOString() : "",
-    });
-  };
+  }, [setFilter]);
 
   return (
     <div className="flex-1 flex items-center justify-between gap-x-3">
       <div className="flex-1 flex items-center gap-2">
         <FilterSelect
           value={filter.classNameId}
-          onChange={(value: string) => setFilter({ classNameId: value })}
+          onChange={handleClassChange}
           placeholder="Class"
-          options={(classes || []).map((v) => ({
-            label: v.name,
-            value: v.id,
-          }))}
+          options={classes}
           className="max-w-[100px]"
         />
         <FilterSelect
           value={filter.batchId}
-          onChange={(value: string) => setFilter({ batchId: value })}
+          onChange={handleBatchChange}
           placeholder="Batch"
-          options={(batches || []).map((v) => ({
-            label: v.name,
-            value: v.id,
-          }))}
+          options={batches}
           className="max-w-[100px]"
         />
         <FilterCalendar
@@ -97,42 +138,36 @@ export const Filter = () => {
         />
         <FilterSelect
           value={filter.month}
-          onChange={(value: string) => setFilter({ month: value })}
+          onChange={handleMonthChange}
           placeholder="Month"
-          options={Object.values(MONTH).map((v) => ({
-            label: v,
-            value: v,
-          }))}
+          options={MONTH_OPTIONS}
           className="max-w-[110px]"
         />
         <FilterSelect
           value={filter.session}
-          onChange={(value: string) => setFilter({ session: value })}
+          onChange={handleSessionChange}
           placeholder="Session"
           options={Session}
-          className="max-w-[110px]"
+          className="max-w-[120px]"
         />
         <FilterSelect
           value={filter.sort}
-          onChange={(value: string) => setFilter({ sort: value })}
+          onChange={handleSortChange}
           placeholder="Sort"
-          options={Object.values(DEFAULT_SORT_OPTIONS)}
-          className="max-w-[100px]"
+          options={SORT_OPTIONS}
+          className="max-w-[120px]"
         />
         <FilterSelect
-          value={filter.limit.toString()}
-          onChange={(value: string) => setFilter({ limit: parseInt(value) })}
+          value={""}
+          onChange={handleLimitChange}
           placeholder="Limit"
-          options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-            label: v.toString(),
-            value: v.toString(),
-          }))}
-          className="max-w-[100px]"
+          options={PAGE_SIZE_OPTIONS}
+          className="max-w-[120px]"
         />
       </div>
       <div className="flex items-center gap-x-2">
         <ResetFilter hasModified={hasAnyModified} handleReset={handleClear} />
-        <MobileFilter batches={batches || []} classes={classes || []} />
+        <MobileFilter batches={batches} classes={classes} />
       </div>
     </div>
   );

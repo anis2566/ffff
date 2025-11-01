@@ -1,5 +1,6 @@
-import { Control, FieldPath, FieldValues } from "react-hook-form";
+import { FieldPath, FieldValues, UseFormReturn } from "react-hook-form";
 import { Loader2 } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import {
   FormField,
@@ -20,99 +21,107 @@ import { cn } from "../lib/utils";
 export interface SearchSelectItem {
   id: string | number;
   name: string;
-  displayId?: string | number; // For badge display (like teacherId)
-  [key: string]: any; // Allow additional properties
+  displayId?: string | number;
+  [key: string]: any;
 }
 
 export interface SearchSelectConfig {
   nameSearchPlaceholder?: string;
-  idSearchPlaceholder?: string;
   selectPlaceholder?: string;
   showNameSearch?: boolean;
-  showIdSearch?: boolean;
   showBadge?: boolean;
   minWidth?: string;
   maxNameWidth?: string;
 }
 
 interface SearchSelectFieldProps<T extends FieldValues> {
-  // Form props
-  control: Control<T>;
+  form: UseFormReturn<T>;
   name: FieldPath<T>;
   label: string;
-
-  // Data props
   items: SearchSelectItem[];
   isLoading?: boolean;
-
-  // Search props
-  nameSearchValue: string;
-  onNameSearchChange: (value: string) => void;
-  idSearchValue?: string;
-  onIdSearchChange?: (value: string) => void;
-
-  // Selection props
-  selectedItemName?: string;
-  onSelectionChange: (id: string | number) => void;
-
-  // UI Configuration
   config?: SearchSelectConfig;
-
-  // State
-  isPending?: boolean;
+  disabled?: boolean;
 }
 
-const defaultConfig: SearchSelectConfig = {
+const DEFAULT_CONFIG: SearchSelectConfig = {
   nameSearchPlaceholder: "Search by name...",
-  idSearchPlaceholder: "Search by id...",
   selectPlaceholder: "Select item",
   showNameSearch: true,
-  showIdSearch: true,
   showBadge: true,
   minWidth: "400px",
   maxNameWidth: "150px",
-};
+} as const;
 
 export function FormSearchSelect<T extends FieldValues>({
-  control,
+  form,
   name,
   label,
-  items,
+  items = [],
   isLoading = false,
-  nameSearchValue,
-  onNameSearchChange,
-  idSearchValue,
-  onIdSearchChange,
-  selectedItemName,
-  onSelectionChange,
-  config = {},
-  isPending = false,
+  config,
+  disabled = false,
 }: SearchSelectFieldProps<T>) {
-  const finalConfig = { ...defaultConfig, ...config };
+  const [nameSearchValue, setNameSearchValue] = useState("");
+  const [open, setOpen] = useState(false);
+
+  const finalConfig = useMemo(
+    () => ({ ...DEFAULT_CONFIG, ...config }),
+    [config]
+  );
+
+  // Filter items based on search value
+  const filteredItems = useMemo(() => {
+    if (!nameSearchValue.trim()) {
+      return items;
+    }
+
+    return items.filter((item) =>
+      item.name.toLowerCase().includes(nameSearchValue.toLowerCase())
+    );
+  }, [items, nameSearchValue]);
+
+  // Get selected item name from field value
+  const getSelectedItemName = (fieldValue: any) => {
+    if (!fieldValue) return null;
+
+    const selectedItem = items.find((item) => item.id === fieldValue);
+    return selectedItem?.name || null;
+  };
+
+  const hasItems = filteredItems.length > 0;
+  const showNoResults = !isLoading && !hasItems;
+
+  const handleSelectionChange = (id: string | number) => {
+    form.setValue(name, id as any, { shouldValidate: true, shouldDirty: true });
+    setOpen(false);
+    setNameSearchValue("");
+  };
+
   return (
     <FormField
-      control={control}
+      control={form.control}
       name={name}
       render={({ field }) => (
         <FormItem className="flex flex-col gap-y-2">
           <FormLabel>{label}</FormLabel>
-          <Popover>
+          <Popover open={open} onOpenChange={setOpen}>
             <FormControl>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="flex justify-start w-full rounded-xs shadow-none dark:bg-background dark:hover:bg-background"
-                  disabled={isPending}
+                  className="justify-start w-full"
+                  disabled={disabled}
+                  type="button"
                 >
-                  {selectedItemName || finalConfig.selectPlaceholder}
+                  {getSelectedItemName(field.value) ||
+                    finalConfig.selectPlaceholder}
                 </Button>
               </PopoverTrigger>
             </FormControl>
             <PopoverContent
-              className={cn(
-                "w-auto",
-                finalConfig.minWidth && `min-w-[${finalConfig.minWidth}]`
-              )}
+              className="w-auto p-4"
+              style={{ minWidth: finalConfig.minWidth }}
             >
               <div className="space-y-4">
                 {/* Name Search Input */}
@@ -120,74 +129,65 @@ export function FormSearchSelect<T extends FieldValues>({
                   <Input
                     type="search"
                     placeholder={finalConfig.nameSearchPlaceholder}
-                    className="w-full bg-background dark:bg-background shadow-none"
                     value={nameSearchValue}
-                    onChange={(e) => onNameSearchChange(e.target.value)}
-                  />
-                )}
-
-                {/* ID Search Input */}
-                {finalConfig.showIdSearch && (
-                  <Input
-                    type="number"
-                    placeholder={finalConfig.idSearchPlaceholder}
-                    className="w-full bg-background dark:bg-background shadow-none"
-                    value={idSearchValue}
-                    onChange={(e) => onIdSearchChange?.(e.target.value)}
+                    onChange={(e) => setNameSearchValue(e.target.value)}
+                    autoFocus
                   />
                 )}
 
                 {/* Items List */}
-                <div className="space-y-2">
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
                   {isLoading && (
-                    <div className="flex items-center justify-center">
+                    <div className="flex items-center justify-center py-4">
                       <Loader2 className="w-4 h-4 animate-spin" />
                     </div>
                   )}
 
                   {!isLoading &&
-                    items?.map((item) => (
-                      <div
-                        key={item.id}
-                        className={cn(
-                          "flex justify-between items-center hover:bg-muted/80 cursor-pointer p-2 rounded-xs",
-                          field.value === item.id && "bg-muted"
-                        )}
-                      >
-                        {/* Badge (optional) */}
-                        {finalConfig.showBadge && item.displayId && (
-                          <Badge variant="default" className="mr-2">
-                            {item.displayId}
-                          </Badge>
-                        )}
+                    filteredItems.map((item) => {
+                      const isSelected = field.value === item.id;
 
-                        {/* Item Name */}
-                        <Label
-                          className="flex flex-1 items-center gap-x-2"
-                          htmlFor={String(item.id)}
+                      return (
+                        <div
+                          key={item.id}
+                          className={cn(
+                            "flex items-center gap-x-2 hover:bg-muted/80 cursor-pointer p-2 rounded-md transition-colors",
+                            isSelected && "bg-muted"
+                          )}
+                          onClick={() => handleSelectionChange(item.id)}
                         >
-                          <span
-                            className={cn(
-                              "text-sm truncate",
-                              finalConfig.maxNameWidth &&
-                                `max-w-[${finalConfig.maxNameWidth}]`
-                            )}
-                          >
-                            {item.name}
-                          </span>
-                        </Label>
+                          {/* Badge (optional) */}
+                          {finalConfig.showBadge && item.displayId && (
+                            <Badge variant="default">{item.displayId}</Badge>
+                          )}
 
-                        {/* Checkbox */}
-                        <Checkbox
-                          checked={field.value === item.id}
-                          id={String(item.id)}
-                          onCheckedChange={() => onSelectionChange(item.id)}
-                        />
-                      </div>
-                    ))}
+                          {/* Item Name */}
+                          <Label
+                            className="flex-1 cursor-pointer"
+                            htmlFor={`item-${item.id}`}
+                          >
+                            <span
+                              className="text-sm truncate block"
+                              style={{ maxWidth: finalConfig.maxNameWidth }}
+                            >
+                              {item.name}
+                            </span>
+                          </Label>
+
+                          {/* Checkbox */}
+                          <Checkbox
+                            checked={isSelected}
+                            id={`item-${item.id}`}
+                            onCheckedChange={() =>
+                              handleSelectionChange(item.id)
+                            }
+                          />
+                        </div>
+                      );
+                    })}
 
                   {/* No items message */}
-                  {!isLoading && (!items || items.length === 0) && (
+                  {showNoResults && (
                     <div className="text-center text-muted-foreground py-4">
                       No items found
                     </div>

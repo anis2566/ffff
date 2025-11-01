@@ -47,15 +47,17 @@ export const StudentAttendanceView = ({ id }: StudentAttendanceViewProps) => {
                   {data?.batch?.name}
                 </p>
               </div>
-              <div className="rounded-xl px-2 py-1 border border-muted bg-background">
-                <p className="text-xs font-medium">Date</p>
-                <p className="text-base font-semibold">
+              <div className="border-l-4 border-blue-500 pl-4 py-1">
+                <p className="text-sm font-medium mb-1">Class</p>
+                <p className="text-md font-semibold text-muted-foreground">
                   {format(new Date(data?.date || new Date()), "dd-MM-yyyy")}
                 </p>
               </div>
-              <div className="rounded-xl px-2 py-1 border border-muted bg-background">
-                <p className="text-xs font-medium">Day</p>
-                <p className="text-base font-semibold">{data?.day}</p>
+              <div className="border-l-4 border-emerald-500 pl-4 py-1">
+                <p className="text-sm font-medium mb-1">Batch</p>
+                <p className="text-md font-semibold text-muted-foreground">
+                  {data?.day}
+                </p>
               </div>
             </div>
           </div>
@@ -105,12 +107,17 @@ export const StudentAttendanceView = ({ id }: StudentAttendanceViewProps) => {
                 <TableCell>{attendance.student.studentId}</TableCell>
                 <TableCell>{attendance.student.name}</TableCell>
                 <TableCell>
-                    <Badge
-                        variant={attendance.status === ATTENDANCE_STATUS.Present.toLocaleLowerCase() ? "default" : "destructive"}
-                        className="capitalize rounded-full"
-                    >
-                        {attendance.status}
-                    </Badge>
+                  <Badge
+                    variant={
+                      attendance.status ===
+                      ATTENDANCE_STATUS.Present.toLocaleLowerCase()
+                        ? "default"
+                        : "destructive"
+                    }
+                    className="capitalize rounded-full"
+                  >
+                    {attendance.status}
+                  </Badge>
                 </TableCell>
               </TableRow>
             ))}

@@ -8,8 +8,6 @@ import {
   DEFAULT_PAGE_SIZE,
   DEFAULT_PAGE_SIZE_OPTIONS,
   DEFAULT_SORT_OPTIONS,
-  MONTH,
-  Session,
 } from "@workspace/utils/constant";
 
 import { FilterSelect } from "@workspace/ui/shared/filter-select";
@@ -17,7 +15,14 @@ import { ResetFilter } from "@workspace/ui/shared/reset-filter";
 import { FilterCalendar } from "@workspace/ui/shared/filter-calendar";
 
 import { useGetExams } from "../../filters/use-get-exams";
+import { useCallback } from "react";
 import { MobileFilter } from "./mobile-filter";
+
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
 
 export const Filter = () => {
   const [filter, setFilter] = useGetExams();
@@ -33,10 +38,22 @@ export const Filter = () => {
       ],
     });
 
-  const classes = classesQuery.data;
-  const batches = batchesQuery.data;
-  const subjects = subjectsQuery.data;
-  const examCategories = examCategoriesQuery.data;
+  const classOptions = (classesQuery.data ?? []).map((v) => ({
+    label: v.name,
+    value: v.id,
+  }));
+  const batchOptions = (batchesQuery.data ?? []).map((v) => ({
+    label: v.name,
+    value: v.id,
+  }));
+  const subjectOptions = (subjectsQuery.data ?? []).map((v) => ({
+    label: v.name,
+    value: v.id,
+  }));
+  const categoryOptions = (examCategoriesQuery.data ?? []).map((v) => ({
+    label: v.name,
+    value: v.id,
+  }));
 
   const hasAnyModified =
     filter.limit !== 5 ||
@@ -48,7 +65,45 @@ export const Filter = () => {
     filter.categoryId !== "" ||
     filter.date !== "";
 
-  const handleClear = () => {
+  const handleClassChange = useCallback(
+    (value: string) => setFilter({ classNameId: value }),
+    [setFilter]
+  );
+
+  const handleBatchChange = useCallback(
+    (value: string) => setFilter({ batchId: value }),
+    [setFilter]
+  );
+
+  const handleSubjectChange = useCallback(
+    (value: string) => setFilter({ subjectId: value }),
+    [setFilter]
+  );
+
+  const handleCategoryChange = useCallback(
+    (value: string) => setFilter({ categoryId: value }),
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    (value: string) => setFilter({ sort: value }),
+    [setFilter]
+  );
+
+  const handleLimitChange = useCallback(
+    (value: string) => setFilter({ limit: parseInt(value, 10) }),
+    [setFilter]
+  );
+
+  const selectedDate = filter.date ? new Date(filter.date) : undefined;
+
+  const handleDateChange = (date: Date | undefined) => {
+    setFilter({
+      date: date ? date.toISOString() : "",
+    });
+  };
+
+  const handleClear = useCallback(() => {
     setFilter({
       limit: DEFAULT_PAGE_SIZE,
       page: DEFAULT_PAGE,
@@ -59,15 +114,7 @@ export const Filter = () => {
       categoryId: "",
       date: "",
     });
-  };
-
-  const selectedDate = filter.date ? new Date(filter.date) : undefined;
-
-  const handleDateChange = (date: Date | undefined) => {
-    setFilter({
-      date: date ? date.toISOString() : "",
-    });
-  };
+  }, [setFilter]);
 
   return (
     <div className="flex-1 flex items-center justify-between gap-x-3">
@@ -82,69 +129,55 @@ export const Filter = () => {
         />
         <FilterSelect
           value={filter.categoryId}
-          onChange={(value: string) => setFilter({ categoryId: value })}
+          onChange={handleCategoryChange}
           placeholder="Category"
-          options={(examCategories || []).map((v) => ({
-            label: v.name,
-            value: v.id,
-          }))}
-          className="max-w-[100px]"
+          options={categoryOptions}
+          className="max-w-[120px]"
         />
         <FilterSelect
           value={filter.classNameId}
-          onChange={(value: string) => setFilter({ classNameId: value })}
+          onChange={handleClassChange}
           placeholder="Class"
-          options={(classes || []).map((v) => ({
-            label: v.name,
-            value: v.id,
-          }))}
-          className="max-w-[100px]"
+          options={classOptions}
+          className="max-w-[120px]"
         />
         <FilterSelect
           value={filter.batchId}
-          onChange={(value: string) => setFilter({ batchId: value })}
+          onChange={handleBatchChange}
           placeholder="Batch"
-          options={(batches || []).map((v) => ({
-            label: v.name,
-            value: v.id,
-          }))}
-          className="max-w-[100px]"
+          options={batchOptions}
+          className="max-w-[120px]"
         />
         <FilterSelect
           value={filter.subjectId}
-          onChange={(value: string) => setFilter({ subjectId: value })}
+          onChange={handleSubjectChange}
           placeholder="Subject"
-          options={(subjects || []).map((v) => ({
-            label: v.name,
-            value: v.id,
-          }))}
-          className="max-w-[100px]"
+          options={subjectOptions}
+          className="max-w-[120px]"
         />
+
         <FilterSelect
           value={filter.sort}
-          onChange={(value: string) => setFilter({ sort: value })}
+          onChange={handleSortChange}
           placeholder="Sort"
-          options={Object.values(DEFAULT_SORT_OPTIONS)}
-          className="max-w-[100px]"
+          options={SORT_OPTIONS}
+          className="max-w-[120px]"
         />
         <FilterSelect
-          value={filter.limit.toString()}
-          onChange={(value: string) => setFilter({ limit: parseInt(value) })}
+          value={""}
+          onChange={handleLimitChange}
           placeholder="Limit"
-          options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-            label: v.toString(),
-            value: v.toString(),
-          }))}
-          className="max-w-[100px]"
+          options={PAGE_SIZE_OPTIONS}
+          className="max-w-[120px]"
         />
       </div>
       <div className="flex items-center gap-x-2">
         <ResetFilter hasModified={hasAnyModified} handleReset={handleClear} />
         <MobileFilter
-          classes={classes || []}
-          batches={batches || []}
-          subjects={subjects || []}
-          categories={examCategories || []}
+          classes={classOptions}
+          batches={batchOptions}
+          subjects={subjectOptions}
+          categories={categoryOptions}
         />
       </div>
     </div>

@@ -27,6 +27,7 @@ export const ClassNameSchema = z.object({
 export type ClassNameSchemaType = z.infer<typeof ClassNameSchema>;
 
 export const SubjectSchema = z.object({
+  session: requiredString,
   name: requiredString,
   level: requiredString,
   group: z.string().optional(),
@@ -35,6 +36,7 @@ export const SubjectSchema = z.object({
 export type SubjectSchemaType = z.infer<typeof SubjectSchema>;
 
 export const CounterSchema = z.object({
+  session: requiredString,
   type: requiredString,
   value: requiredString,
 });
@@ -42,6 +44,7 @@ export const CounterSchema = z.object({
 export type CounterSchemaType = z.infer<typeof CounterSchema>;
 
 export const AdmissionFeeSchema = z.object({
+  session: requiredString,
   classNameId: requiredString,
   amount: requiredString,
 });
@@ -49,7 +52,7 @@ export const AdmissionFeeSchema = z.object({
 export type AdmissionFeeSchemaType = z.infer<typeof AdmissionFeeSchema>;
 
 export const SalaryFeeSchema = z.object({
-  type: requiredString,
+  session: requiredString,
   classNameId: requiredString,
   amount: requiredString,
   group: z.string().optional(),
@@ -58,6 +61,7 @@ export const SalaryFeeSchema = z.object({
 export type SalaryFeeSchemaType = z.infer<typeof SalaryFeeSchema>;
 
 export const InstituteSchema = z.object({
+  session: requiredString,
   type: requiredString,
   name: requiredString,
 });
@@ -96,6 +100,7 @@ export const StudentSchema = z.object({
   salaryFee: requiredString,
   courseFee: z.string().optional(),
   batchId: requiredString,
+  session: requiredString,
 });
 export type StudentSchemaType = z.infer<typeof StudentSchema>;
 
@@ -133,13 +138,20 @@ export const TeacherSchema = z.object({
   permanentDistrict: requiredString,
   phone: z.string().length(11, { message: "invalid phone number" }),
   altPhone: z.string().optional(),
-  currentInstitution: requiredString,
-  currentSubject: requiredString,
   level: z.array(z.string()).min(1, { message: "required" }),
   availableTimes: z.array(z.string()).min(1, { message: "required" }),
   availableDays: z.array(z.string()).min(1, { message: "required" }),
   classRate: requiredString,
   teacherId: requiredString,
+  sscSchool: requiredString,
+  sscGroup: requiredString,
+  sscResult: requiredString,
+  hscSchool: requiredString,
+  hscGroup: requiredString,
+  hscResult: requiredString,
+  degreeSchool: requiredString,
+  degreeSubject: requiredString,
+  degreeResult: requiredString,
 });
 export type TeacherSchemaType = z.infer<typeof TeacherSchema>;
 
@@ -158,6 +170,7 @@ export const RoomSchema = z.object({
 export type RoomSchemaType = z.infer<typeof RoomSchema>;
 
 export const BatchSchema = z.object({
+  session: requiredString,
   name: requiredString,
   classNameId: requiredString,
   capacity: requiredString,
@@ -194,7 +207,6 @@ export const HousePaymentSchema = z.object({
   month: requiredString,
   amount: requiredString,
   method: requiredString,
-  paymentStatus: requiredString,
   houseId: requiredString,
 });
 export type HousePaymentSchemaType = z.infer<typeof HousePaymentSchema>;
@@ -264,7 +276,7 @@ export type ExamCategoryType = z.infer<typeof ExamCategory>;
 export const ExamSchema = z
   .object({
     name: requiredString,
-    topic: requiredString,
+    topic: z.string().optional(),
     subjectId: requiredString,
     batchId: requiredString,
     classNameId: requiredString,

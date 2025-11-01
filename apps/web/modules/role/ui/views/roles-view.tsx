@@ -2,6 +2,7 @@
 
 import { useTRPC } from "@/trpc/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 import { ListCardWrapper } from "@workspace/ui/shared/list-card-wrapper";
 import { DesktopPagination } from "@workspace/ui/shared/desktop-pagination";
@@ -19,26 +20,33 @@ export const RolesView = () => {
 
   const { data } = useSuspenseQuery(trpc.role.getMany.queryOptions(filters));
 
+  const { roles = [], totalCount = 0 } = data;
+
+  const handlePageChange = useCallback(
+    (page: number) => setFilters({ page }),
+    [setFilters]
+  );
+
   return (
     <ListCardWrapper
       title="Manage Role"
-      value={data?.totalCount}
+      value={totalCount}
       actionButtons
       onClickAction={onOpen}
     >
       <Filter />
-      <RoleList roles={data?.roles ?? []} />
+      <RoleList roles={roles} />
       <DesktopPagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
       <MobilePagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
     </ListCardWrapper>
   );

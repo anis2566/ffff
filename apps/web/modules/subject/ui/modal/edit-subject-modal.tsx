@@ -24,60 +24,78 @@ import {
 } from "@workspace/ui/shared/loadign-button";
 
 import { SubjectSchema, SubjectSchemaType } from "@workspace/utils/schemas";
-import { GROUPS, LEVELS } from "@workspace/utils/constant";
+import { GROUPS, LEVELS, Session } from "@workspace/utils/constant";
 
-import { useGetSubjects } from "../../filters/use-get-subjects";
 import { useEditSubject } from "@/hooks/use-subject";
+
+const LEVEL_OPTIONS = Object.values(LEVELS).map((level) => ({
+  label: level,
+  value: level,
+}));
+
+const GROUP_OPTIONS = Object.values(GROUPS).map((group) => ({
+  label: group,
+  value: group,
+}));
 
 export const EditSubjectModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
-  const { isOpen, onClose, subjectId, name, level, group } = useEditSubject();
+  const { isOpen, onClose, subjectId, session, name, level, group } =
+    useEditSubject();
   const trpc = useTRPC();
-  const [filters] = useGetSubjects();
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    form.setValue("name", name);
-    form.setValue("level", level);
-    form.setValue("group", group);
-  }, [name, level, group]);
-
-  const { mutate: updateSubject, isPending } = useMutation(
-    trpc.subject.updateOne.mutationOptions({
-      onError: (err) => {
-        setErrorText(err.message);
-        setButtonState("error");
-        toast.error(err.message);
-      },
-      onSuccess: async (data) => {
-        if (!data.success) {
-          setButtonState("error");
-          setErrorText(data.message);
-          toast.error(data.message);
-          return;
-        }
-        setButtonState("success");
-        toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.subject.getMany.queryOptions({ ...filters })
-        );
-        onClose();
-      },
-    })
-  );
 
   const form = useForm<SubjectSchemaType>({
     resolver: zodResolver(SubjectSchema),
     defaultValues: {
+      session: "",
       name: "",
       level: "",
       group: "",
     },
   });
 
-  const onSubmit = (data: SubjectSchemaType) => {
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        session,
+        name,
+        level,
+        group,
+      });
+    }
+  }, [isOpen, form, name, level, group, session]);
+
+  const { mutate: updateSubject, isPending } = useMutation(
+    trpc.subject.updateOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
+      onError: (err) => {
+        setButtonState("error");
+        toast.error(err.message);
+      },
+      onSuccess: async (data) => {
+        if (!data.success) {
+          setButtonState("error");
+          toast.error(data.message);
+          return;
+        }
+        setButtonState("success");
+        toast.success(data.message);
+        queryClient.invalidateQueries({
+          queryKey: trpc.subject.getMany.queryKey(),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+      },
+    })
+  );
+
+  const handleSubmit = (data: SubjectSchemaType) => {
     setButtonState("loading");
     updateSubject({
       ...data,
@@ -85,8 +103,14 @@ export const EditSubjectModal = () => {
     });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Subject</DialogTitle>
@@ -96,7 +120,18 @@ export const EditSubjectModal = () => {
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
+          >
+            <FormSelect
+              form={form}
+              name="session"
+              label="Session"
+              placeholder="Select session"
+              options={Session}
+              triggerClassName="w-full"
+            />
             <FormInput
               form={form}
               name="name"
@@ -110,10 +145,7 @@ export const EditSubjectModal = () => {
               label="Level"
               placeholder="Select level"
               disabled={isPending}
-              options={Object.values(LEVELS).map((level) => ({
-                label: level,
-                value: level,
-              }))}
+              options={LEVEL_OPTIONS}
             />
             <FormSelect
               form={form}
@@ -121,17 +153,10 @@ export const EditSubjectModal = () => {
               label="Group"
               placeholder="Select group"
               disabled={isPending}
-              options={Object.values(GROUPS).map((level) => ({
-                label: level,
-                value: level,
-              }))}
+              options={GROUP_OPTIONS}
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Updating..."
-              successText="Updated!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

@@ -1,7 +1,7 @@
 "use client";
 
 import { Filter } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -27,50 +27,19 @@ import { FilterInput } from "@workspace/ui/shared/filter-input";
 
 import { useGetTeachers } from "../../filters/use-get-teachers";
 
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
+const TEACHER_STATUS_OPTIONS = Object.values(TEACHER_STATUS).map((v) => ({
+  label: v,
+  value: v,
+}));
+
 export const MobileFilter = () => {
   const [open, setOpen] = useState(false);
-
   const [filter, setFilter] = useGetTeachers();
-
-  const handleSortChange = (value: string) => {
-    try {
-      setFilter({ sort: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleLimitChange = (value: string) => {
-    try {
-      setFilter({ limit: parseInt(value) });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleSessionChange = (value: string) => {
-    try {
-      setFilter({ session: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleStatusChange = (value: string) => {
-    try {
-      setFilter({ status: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
 
   const hasAnyModified =
     !!filter.search ||
@@ -81,7 +50,45 @@ export const MobileFilter = () => {
     filter.id !== "" ||
     filter.status !== "";
 
-  const handleClear = () => {
+  const createFilterHandler = useCallback(
+    (key: string, transform?: (value: string) => any) => (value: string) => {
+      try {
+        setFilter({ [key]: transform ? transform(value) : value });
+      } catch (error) {
+        console.error(`Error setting ${key}:`, error);
+      } finally {
+        setOpen(false);
+      }
+    },
+    [setFilter]
+  );
+
+  const handleStatusChange = useCallback(
+    () => createFilterHandler("status"),
+    [createFilterHandler]
+  );
+
+  const handleIdChange = useCallback(
+    (value: string) => setFilter({ id: value }),
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    () => createFilterHandler("sort"),
+    [createFilterHandler]
+  );
+
+  const handleLimitChange = useCallback(
+    () => createFilterHandler("limit", (v) => parseInt(v, 10)),
+    [createFilterHandler]
+  );
+
+  const handleSessionChange = useCallback(
+    () => createFilterHandler("session"),
+    [createFilterHandler]
+  );
+
+  const handleClear = useCallback(() => {
     setFilter({
       search: "",
       limit: DEFAULT_PAGE_SIZE,
@@ -91,7 +98,7 @@ export const MobileFilter = () => {
       id: "",
       status: "",
     });
-  };
+  }, [setFilter]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -118,9 +125,17 @@ export const MobileFilter = () => {
             type="search"
             placeholder="id..."
             value={filter.id}
-            onChange={(value: string) => setFilter({ id: value })}
+            onChange={handleIdChange}
             showInMobile
             className="max-w-full rounded-md"
+          />
+          <FilterSelect
+            value={filter.status}
+            onChange={handleStatusChange}
+            placeholder="Status"
+            options={TEACHER_STATUS_OPTIONS}
+            className="max-w-full"
+            showInMobile
           />
           <FilterSelect
             value={filter.session}
@@ -131,32 +146,18 @@ export const MobileFilter = () => {
             showInMobile
           />
           <FilterSelect
-            value={filter.status}
-            onChange={handleStatusChange}
-            placeholder="Status"
-            options={Object.values(TEACHER_STATUS).map((v) => ({
-              label: v,
-              value: v,
-            }))}
-            className="max-w-full"
-            showInMobile
-          />
-          <FilterSelect
             value={filter.sort}
             onChange={handleSortChange}
             placeholder="Sort"
-            options={Object.values(DEFAULT_SORT_OPTIONS)}
+            options={SORT_OPTIONS}
             className="max-w-full"
             showInMobile
           />
           <FilterSelect
-            value={filter.limit.toString()}
+            value={""}
             onChange={handleLimitChange}
             placeholder="Limit"
-            options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-              label: v.toString(),
-              value: v.toString(),
-            }))}
+            options={PAGE_SIZE_OPTIONS}
             className="max-w-full"
             showInMobile
           />

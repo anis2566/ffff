@@ -4,8 +4,8 @@ import { Metadata } from "next";
 import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 
 import { ContentLayout } from "@/modules/ui/layout/content-layout";
-import { getDueAdmissionPayments } from "@/modules/fee/filters/get-due-admission-payments";
-import { DueAdmissionPaymentsView } from "@/modules/fee/ui/view/due-admission-payments-view";
+import { getDueAdmissionPayments } from "@/modules/admission-payment/filters/get-due-admission-payments";
+import { DueAdmissionPaymentsView } from "@/modules/admission-payment/ui/view/due-admission-payments-view";
 
 export const metadata: Metadata = {
   title: "Due Admission Payments",

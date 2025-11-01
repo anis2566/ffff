@@ -15,20 +15,28 @@ export const useCreateCounter = create<CreateCounterState>((set) => ({
 interface EditCounterState {
   isOpen: boolean;
   counterId: string;
+  session: string;
   type: string;
   value: string;
-  onOpen: (counterId: string, type: string, value: string) => void;
+  onOpen: (
+    counterId: string,
+    session: string,
+    type: string,
+    value: string
+  ) => void;
   onClose: () => void;
 }
 
 export const useEditCounter = create<EditCounterState>((set) => ({
   isOpen: false,
   counterId: "",
+  session: "",
   type: "",
   value: "",
-  onOpen: (id: string, type: string, value: string) =>
-    set({ isOpen: true, counterId: id, type, value }),
-  onClose: () => set({ isOpen: false, counterId: "", type: "", value: "" }),
+  onOpen: (counterId: string, session: string, type: string, value: string) =>
+    set({ isOpen: true, counterId, session, type, value }),
+  onClose: () =>
+    set({ isOpen: false, counterId: "", session: "", type: "", value: "" }),
 }));
 
 interface DeleteCounterState {

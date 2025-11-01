@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 import { useTRPC } from "@/trpc/react";
 
 import { BatchSchema, BatchSchemaType } from "@workspace/utils/schemas";
-import { LEVELS } from "@workspace/utils/constant";
+import { LEVELS, Session } from "@workspace/utils/constant";
 
 import { FormCardWrapper } from "@workspace/ui/shared/form-card-wrapper";
 import { FormInput } from "@workspace/ui/shared/form-input";
@@ -48,7 +48,6 @@ import { useGetBatches } from "../../filters/use-get-batches";
 
 export const NewBatchForm = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
   const [selectedRoom, setSelectedRoom] = useState<string>("");
   const [searchRoom, setSearchRoom] = useState<string>("");
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
@@ -59,7 +58,20 @@ export const NewBatchForm = () => {
   const trpc = useTRPC();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [filters] = useGetBatches();
+
+  const form = useForm<BatchSchemaType>({
+    resolver: zodResolver(BatchSchema),
+    defaultValues: {
+      session: "",
+      name: "",
+      classNameId: "",
+      capacity: "",
+      level: "",
+      roomId: "",
+      time: [],
+      classTime: [],
+    },
+  });
 
   const [roomsQuery, classesQuery] = useQueries({
     queries: [
@@ -73,23 +85,24 @@ export const NewBatchForm = () => {
 
   const { mutate: createBatch, isPending } = useMutation(
     trpc.batch.createOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.batch.getMany.queryOptions({ ...filters })
-        );
+        await queryClient.invalidateQueries({
+          queryKey: trpc.batch.getMany.queryKey(),
+        });
         router.push("/batch");
       },
     })
@@ -128,22 +141,7 @@ export const NewBatchForm = () => {
     }
   };
 
-  const form = useForm<BatchSchemaType>({
-    resolver: zodResolver(BatchSchema),
-    defaultValues: {
-      name: "",
-      classNameId: "",
-      capacity: "",
-      level: "",
-      roomId: "",
-      time: [],
-      classTime: [],
-    },
-  });
-
   const onSubmit = (data: BatchSchemaType) => {
-    console.log(data);
-    setButtonState("loading");
     createBatch(data);
   };
 
@@ -154,6 +152,14 @@ export const NewBatchForm = () => {
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormSelect
+            form={form}
+            name="session"
+            label="Session"
+            placeholder="Select session"
+            options={Session}
+            triggerClassName="w-full"
+          />
           <FormInput
             form={form}
             name="name"
@@ -347,19 +353,14 @@ export const NewBatchForm = () => {
               />
             </CollapsibleContent>
           </Collapsible>
-
           <LoadingButton
             type="submit"
-            onClick={form.handleSubmit(onSubmit)}
-            loadingText="Saving..."
-            successText="Saved!"
-            errorText={errorText || "Failed"}
             state={buttonState}
             onStateChange={setButtonState}
-            className="w-full md:w-auto rounded-full"
+            className="w-full rounded-full"
             icon={Send}
           >
-            Save
+            Submit
           </LoadingButton>
         </form>
       </Form>

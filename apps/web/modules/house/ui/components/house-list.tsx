@@ -14,42 +14,55 @@ import {
 } from "@workspace/ui/components/table";
 
 import { ListActionButton } from "@/components/list-action-button";
-import { ListActionLink } from "@/components/list-action-link";
-import { useDeleteHouse } from "@/hooks/use-house";
+
+import { useDeleteHouse, useEditHouse } from "@/hooks/use-house";
+import { usePermissions } from "@/hooks/use-user-permission";
+
+interface HouseWithRelation extends House {
+  _count: {
+    rooms: number;
+  };
+}
 
 interface HouseListProps {
-  houses: House[];
+  houses: HouseWithRelation[];
 }
 
 export const HouseList = ({ houses }: HouseListProps) => {
   const { onOpen } = useDeleteHouse();
+  const { onOpen: onEdit } = useEditHouse();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
       <TableHeader>
         <TableRow className="bg-background/60">
           <TableHead>Name</TableHead>
-          <TableHead>Rooms</TableHead>
+          <TableHead>No of Rooms</TableHead>
+          <TableHead>Book Rooms</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {houses.map((house) => (
-          <TableRow key={house.id}>
+          <TableRow key={house.id} className="even:bg-muted">
             <TableCell>{house.name}</TableCell>
             <TableCell>{house.roomCount}</TableCell>
+            <TableCell>{house._count.rooms}</TableCell>
             <TableCell>
               <ListActions>
-                <ListActionLink
+                <ListActionButton
                   title="Edit"
-                  href={`/house/edit/${house.id}`}
                   icon={Edit}
+                  onClick={() => onEdit(house.id, house.name, house.roomCount)}
+                  hasPermission={hasPermission("class", "update")}
                 />
                 <ListActionButton
                   isDanger
                   title="Delete"
                   icon={Trash2}
                   onClick={() => onOpen(house.id)}
+                  hasPermission={hasPermission("house", "delete")}
                 />
               </ListActions>
             </TableCell>

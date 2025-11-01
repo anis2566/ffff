@@ -10,6 +10,7 @@ import { DesktopPagination } from "@workspace/ui/shared/desktop-pagination";
 import { useGetExams } from "../../filters/use-get-exams";
 import { ExamList } from "../components/exam-list";
 import { Filter } from "../components/filter";
+import { useCallback } from "react";
 
 export const ExamsView = () => {
   const [filters, setFilters] = useGetExams();
@@ -21,22 +22,29 @@ export const ExamsView = () => {
     })
   );
 
+  const { exams = [], totalCount = 0 } = data;
+
+  const handlePageChange = useCallback(
+    (page: number) => setFilters({ page }),
+    [setFilters]
+  );
+
   return (
     <div className="flex-1 flex flex-col gap-6">
-      <ListCardWrapper title="Manage Exams" value={data?.totalCount}>
+      <ListCardWrapper title="Manage Exams" value={totalCount}>
         <Filter />
-        <ExamList exams={data?.exams} />
+        <ExamList exams={exams} />
         <DesktopPagination
-          totalCount={data?.totalCount}
+          totalCount={totalCount}
           currentPage={filters.page}
           pageSize={filters.limit}
-          onPageChange={(page) => setFilters({ page })}
+          onPageChange={handlePageChange}
         />
         <MobilePagination
-          totalCount={data?.totalCount}
+          totalCount={totalCount}
           currentPage={filters.page}
           pageSize={filters.limit}
-          onPageChange={(page) => setFilters({ page })}
+          onPageChange={handlePageChange}
         />
       </ListCardWrapper>
     </div>

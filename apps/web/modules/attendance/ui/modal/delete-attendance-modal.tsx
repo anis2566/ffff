@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Send } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/react";
@@ -21,51 +21,57 @@ import {
 } from "@workspace/ui/shared/loadign-button";
 
 import { useDeleteStudentAttendance } from "@/hooks/use-student-attendance";
-import { useGetStudentAttendances } from "../../filters/use-get-student-attendances";
 
 export const DeleteAttendanceModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, attendanceId, onClose } = useDeleteStudentAttendance();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  const [filters] = useGetStudentAttendances();
-
   const { mutate: deleteAttendance, isPending } = useMutation(
     trpc.studentAttendance.deleteOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.studentAttendance.getMany.queryOptions({ ...filters })
-        );
+        await queryClient.invalidateQueries({
+          queryKey: trpc.studentAttendance.getMany.queryKey(),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
         onClose();
       },
     })
   );
 
   const handleDelete = () => {
-    setButtonState("loading");
     deleteAttendance(attendanceId);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
   };
 
   return (
     <AlertDialog
       open={isOpen && !!attendanceId}
-      onOpenChange={isPending ? () => {} : onClose}
+      onOpenChange={handleOpenChange}
     >
       <AlertDialogContent className="rounded-xs">
         <AlertDialogHeader>
@@ -78,16 +84,12 @@ export const DeleteAttendanceModal = () => {
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
           <LoadingButton
-            type="submit"
             onClick={handleDelete}
-            loadingText="Deleting..."
-            successText="Deleted!"
-            errorText={errorText || "Failed"}
             state={buttonState}
             onStateChange={setButtonState}
             className="w-full md:w-auto"
             variant="destructive"
-            icon={Send}
+            icon={Trash2}
           >
             Delete
           </LoadingButton>

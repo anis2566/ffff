@@ -1,12 +1,12 @@
 import type { TRPCRouterRecord } from "@trpc/server";
 import z from "zod";
 
-import { adminProcedure } from "../trpc";
+import { permissionProcedure } from "../trpc";
 
 import { PermissionSchema } from "@workspace/utils/schemas";
 
 export const permissionRouter = {
-  createOne: adminProcedure
+  createOne: permissionProcedure("permission", "create")
     .input(PermissionSchema)
     .mutation(async ({ ctx, input }) => {
       const { module, actions } = input;
@@ -47,7 +47,7 @@ export const permissionRouter = {
         return { success: false, message: "Internal server error" };
       }
     }),
-  updateOne: adminProcedure
+  updateOne: permissionProcedure("permission", "update")
     .input(
       z.object({
         permissionId: z.string(),
@@ -103,7 +103,7 @@ export const permissionRouter = {
         return { success: false, message: "Internal server error" };
       }
     }),
-  getMany: adminProcedure
+  getMany: permissionProcedure("permission", "read")
     .input(
       z.object({
         page: z.number(),
@@ -115,29 +115,34 @@ export const permissionRouter = {
     .query(async ({ ctx, input }) => {
       const { page, limit, sort, search } = input;
 
-      // Fetch all permissions matching the search criteria with roles
-      const allPermissions = await ctx.db.permission.findMany({
+      const distinctModules = await ctx.db.permission.findMany({
         where: {
           ...(search && {
             OR: [
-              {
-                name: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-              {
-                module: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
-              {
-                action: {
-                  contains: search,
-                  mode: "insensitive",
-                },
-              },
+              { name: { contains: search, mode: "insensitive" } },
+              { module: { contains: search, mode: "insensitive" } },
+              { action: { contains: search, mode: "insensitive" } },
+            ],
+          }),
+        },
+        distinct: ["module"],
+        orderBy: {
+          createdAt: sort === "asc" ? "asc" : "desc",
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        select: { module: true },
+      });
+
+      const moduleNames = distinctModules.map((m) => m.module);
+
+      const allPermissions = await ctx.db.permission.findMany({
+        where: {
+          module: { in: moduleNames },
+          ...(search && {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { action: { contains: search, mode: "insensitive" } },
             ],
           }),
         },
@@ -145,13 +150,28 @@ export const permissionRouter = {
           roles: true,
         },
         orderBy: {
-          createdAt: "asc",
+          createdAt: sort === "asc" ? "asc" : "desc",
         },
       });
 
+      const totalModules = await ctx.db.permission.groupBy({
+        by: ["module"],
+        where: {
+          ...(search && {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { module: { contains: search, mode: "insensitive" } },
+              { action: { contains: search, mode: "insensitive" } },
+            ],
+          }),
+        },
+        _count: true,
+      });
+
+      const totalCount = totalModules.length;
+
       type PermissionWithRoles = (typeof allPermissions)[number];
 
-      // Group permissions by module
       const groupedByModule = allPermissions.reduce(
         (acc, permission) => {
           const {
@@ -168,7 +188,6 @@ export const permissionRouter = {
 
           if (!acc[module]) {
             acc[module] = {
-              name,
               module,
               permissions: [],
             };
@@ -190,20 +209,19 @@ export const permissionRouter = {
         {} as Record<
           string,
           {
-            name: string;
             module: string;
             permissions: Array<Omit<PermissionWithRoles, "module">>;
           }
         >
       );
 
-      // Convert to array and apply pagination
       const groupedArray = Object.values(groupedByModule);
-      const totalCount = groupedArray.length;
 
       return {
         permissions: groupedArray,
         totalCount,
+        page,
+        totalPages: Math.ceil(totalCount / limit),
       };
     }),
 } satisfies TRPCRouterRecord;

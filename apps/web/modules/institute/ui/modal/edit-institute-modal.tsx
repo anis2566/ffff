@@ -24,67 +24,85 @@ import {
 } from "@workspace/ui/shared/loadign-button";
 
 import { InstituteSchema, InstituteSchemaType } from "@workspace/utils/schemas";
-import { INSTITUTE_TYPES } from "@workspace/utils/constant";
+import { INSTITUTE_TYPES, Session } from "@workspace/utils/constant";
 
-import { useGetInstitutes } from "../../filters/use-get-institutes";
 import { useEditInstitute } from "@/hooks/use-institute";
+
+const INSTITUTE_TYPES_OPTIONS = Object.values(INSTITUTE_TYPES).map((v) => ({
+  label: v,
+  value: v,
+}));
 
 export const EditInstituteModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
-  const { isOpen, onClose, instituteId, type, name } = useEditInstitute();
+  const { isOpen, onClose, instituteId, session, type, name } =
+    useEditInstitute();
   const trpc = useTRPC();
-  const [filters] = useGetInstitutes();
   const queryClient = useQueryClient();
 
+  const form = useForm<InstituteSchemaType>({
+    resolver: zodResolver(InstituteSchema),
+    defaultValues: {
+      session: "",
+      type: "",
+      name: "",
+    },
+  });
+
   useEffect(() => {
-    form.setValue("type", type);
-    form.setValue("name", name);
-  }, [type, name]);
+    if (isOpen) {
+      form.reset({
+        session,
+        type,
+        name,
+      });
+    }
+  }, [isOpen, form, session, type, name]);
 
   const { mutate: updateInstitute, isPending } = useMutation(
     trpc.institute.updateOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.institute.getMany.queryOptions({ ...filters })
-        );
-        onClose();
+        queryClient.invalidateQueries({
+          queryKey: trpc.institute.getMany.queryKey(),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
 
-  const form = useForm<InstituteSchemaType>({
-    resolver: zodResolver(InstituteSchema),
-    defaultValues: {
-      type: "",
-      name: "",
-    },
-  });
-
   const onSubmit = (data: InstituteSchemaType) => {
-    setButtonState("loading");
     updateInstitute({
       ...data,
       id: instituteId,
     });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Institute</DialogTitle>
@@ -97,14 +115,19 @@ export const EditInstituteModal = () => {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormSelect
               form={form}
+              name="session"
+              label="Session"
+              placeholder="Select session"
+              options={Session}
+              triggerClassName="w-full"
+            />
+            <FormSelect
+              form={form}
               name="type"
               label="Type"
               placeholder="Select type"
               disabled={isPending}
-              options={Object.values(INSTITUTE_TYPES).map((type) => ({
-                value: type,
-                label: type,
-              }))}
+              options={INSTITUTE_TYPES_OPTIONS}
             />
             <FormInput
               form={form}
@@ -115,10 +138,6 @@ export const EditInstituteModal = () => {
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Updating..."
-              successText="Updated!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

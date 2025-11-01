@@ -15,20 +15,32 @@ export const useCreateAdmissionFee = create<CreateAdmissionFeeState>((set) => ({
 interface EditAdmissionFeeState {
   isOpen: boolean;
   feeId: string;
+  session: string;
   classNameId: string;
   amount: string;
-  onOpen: (feeId: string, classNameId: string, amount: string) => void;
+  onOpen: (
+    feeId: string,
+    session: string,
+    classNameId: string,
+    amount: string
+  ) => void;
   onClose: () => void;
 }
 
 export const useEditAdmissionFee = create<EditAdmissionFeeState>((set) => ({
   isOpen: false,
   feeId: "",
+  session: "",
   classNameId: "",
   amount: "",
-  onOpen: (feeId: string, classNameId: string, amount: string) =>
-    set({ isOpen: true, feeId, classNameId, amount }),
-  onClose: () => set({ isOpen: false, feeId: "", classNameId: "", amount: "" }),
+  onOpen: (
+    feeId: string,
+    session: string,
+    classNameId: string,
+    amount: string
+  ) => set({ isOpen: true, feeId, session, classNameId, amount }),
+  onClose: () =>
+    set({ isOpen: false, feeId: "", session: "", classNameId: "", amount: "" }),
 }));
 
 interface DeleteAdmissionFeeState {

@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import { ContentLayout } from "@/modules/ui/layout/content-layout";
 
 import { HydrateClient, prefetch, trpc } from "@/trpc/server";
-import { EditAdmissionPaymentView } from "@/modules/fee/ui/view/edit-admission-payment-view";
+import { EditAdmissionPaymentView } from "@/modules/admission-payment/ui/view/edit-admission-payment-view";
 
 export const metadata: Metadata = {
   title: "Update Fee",

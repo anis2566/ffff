@@ -1,7 +1,7 @@
 "use client";
 
 import { Filter } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -21,34 +21,18 @@ import {
 } from "@workspace/utils/constant";
 import { ResetFilter } from "@workspace/ui/shared/reset-filter";
 import { Separator } from "@workspace/ui/components/separator";
-import { FilterInput } from "@workspace/ui/shared/filter-input";
 
 import { useGetUsers } from "../../filters/use-get-users";
 
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
+
 export const MobileFilter = () => {
   const [open, setOpen] = useState(false);
-
   const [filter, setFilter] = useGetUsers();
-
-  const handleSortChange = (value: string) => {
-    try {
-      setFilter({ sort: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleLimitChange = (value: string) => {
-    try {
-      setFilter({ limit: parseInt(value) });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
 
   const hasAnyModified =
     !!filter.search ||
@@ -57,7 +41,30 @@ export const MobileFilter = () => {
     filter.sort !== "" ||
     filter.email !== "";
 
-  const handleClear = () => {
+  const createFilterHandler = useCallback(
+    (key: string, transform?: (value: string) => any) => (value: string) => {
+      try {
+        setFilter({ [key]: transform ? transform(value) : value });
+      } catch (error) {
+        console.error(`Error setting ${key}:`, error);
+      } finally {
+        setOpen(false);
+      }
+    },
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    () => createFilterHandler("sort"),
+    [createFilterHandler]
+  );
+
+  const handleLimitChange = useCallback(
+    () => createFilterHandler("limit", (v) => parseInt(v, 10)),
+    [createFilterHandler]
+  );
+
+  const handleClear = useCallback(() => {
     setFilter({
       search: "",
       limit: DEFAULT_PAGE_SIZE,
@@ -65,7 +72,7 @@ export const MobileFilter = () => {
       sort: "",
       email: "",
     });
-  };
+  }, [setFilter]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -76,7 +83,7 @@ export const MobileFilter = () => {
       </DrawerTrigger>
       <DrawerContent className="p-4">
         <DrawerHeader>
-          <DrawerTitle />
+          <DrawerTitle>Filter</DrawerTitle>
         </DrawerHeader>
         <div className="flex items-center justify-between">
           <ResetFilter hasModified={hasAnyModified} handleReset={handleClear} />
@@ -88,38 +95,19 @@ export const MobileFilter = () => {
         </div>
         <Separator className="my-4" />
         <div className="flex flex-col gap-4">
-          <FilterInput
-            type="search"
-            placeholder="search by name..."
-            value={filter.search}
-            onChange={(value: string) => setFilter({ search: value })}
-            showInMobile
-            className="max-w-full rounded-md"
-          />
-          <FilterInput
-            type="search"
-            placeholder="search by email..."
-            value={filter.email}
-            onChange={(value: string) => setFilter({ email: value })}
-            showInMobile
-            className="max-w-full rounded-md"
-          />
           <FilterSelect
             value={filter.sort}
             onChange={handleSortChange}
             placeholder="Sort"
-            options={Object.values(DEFAULT_SORT_OPTIONS)}
+            options={SORT_OPTIONS}
             className="max-w-full"
             showInMobile
           />
           <FilterSelect
-            value={filter.limit.toString()}
+            value={""}
             onChange={handleLimitChange}
             placeholder="Limit"
-            options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-              label: v.toString(),
-              value: v.toString(),
-            }))}
+            options={PAGE_SIZE_OPTIONS}
             className="max-w-full"
             showInMobile
           />

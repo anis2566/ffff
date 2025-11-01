@@ -1,69 +1,94 @@
 import type { TRPCRouterRecord } from "@trpc/server";
+import type { Prisma } from "@workspace/db";
 import z from "zod";
 import { format } from "date-fns";
 
 import { permissionProcedure, protectedProcedure } from "../trpc";
 
 import { AttendanceSchema } from "@workspace/utils/schemas";
-import { MONTH } from "@workspace/utils/constant";
+import { MONTH, currentSession } from "@workspace/utils/constant";
+
+// Shared error handler
+const handleError = (error: unknown, operation: string) => {
+  console.error(`Error ${operation}:`, error);
+  return { success: false, message: "Internal Server Error" };
+};
+
+// Reusable where clause builder for session filtering
+const buildSessionFilter = (
+  session?: string | null
+): Prisma.AttendanceGroupWhereInput =>
+  session ? { session } : { session: { in: currentSession } };
+
+// Get current session and month
+const getCurrentSession = () => new Date().getFullYear().toString();
+const getCurrentMonth = () =>
+  Object.values(MONTH)[new Date().getMonth()] as string;
+
+// Calculate attendance stats
+const calculateAttendanceStats = (attendances: Array<{ status: string }>) => {
+  const present = attendances.filter((a) => a.status === "present").length;
+  const absent = attendances.filter((a) => a.status === "absent").length;
+  return { present, absent, total: attendances.length };
+};
 
 export const studentAttendanceRouter = {
-  createMany: permissionProcedure("attendance_attendance", "create")
+  createMany: permissionProcedure("student_attendance", "create")
     .input(AttendanceSchema)
     .mutation(async ({ input, ctx }) => {
       const { attendances, batchId, date } = input;
 
       try {
-        const existingAttendances = await ctx.db.attendanceGroup.findFirst({
-          where: {
-            batchId: batchId,
-            date: new Date(date),
-          },
-        });
+        const attendanceDate = new Date(date);
 
-        if (existingAttendances) {
+        const [existingAttendance, batch] = await Promise.all([
+          ctx.db.attendanceGroup.findFirst({
+            where: {
+              batchId,
+              date: attendanceDate,
+            },
+            select: { id: true },
+          }),
+          ctx.db.batch.findUnique({
+            where: { id: batchId },
+            select: {
+              name: true,
+              classNameId: true,
+            },
+          }),
+        ]);
+
+        if (existingAttendance) {
           return { success: false, message: "Attendance already taken" };
         }
-
-        const batch = await ctx.db.batch.findUnique({
-          where: {
-            id: batchId,
-          },
-        });
 
         if (!batch) {
           return { success: false, message: "Batch not found" };
         }
 
-        const attendanceDate = new Date(date);
-        const formatedDate = format(attendanceDate, "dd-MM-yyyy");
+        const formattedDate = format(attendanceDate, "dd-MM-yyyy");
         const dayName = format(attendanceDate, "EEEE");
-
-        const present = attendances.filter(
-          (attendance) => attendance.status === "present"
-        );
-
-        const absent = attendances.filter(
-          (attendance) => attendance.status === "absent"
-        );
+        const currentSession = getCurrentSession();
+        const currentMonth = getCurrentMonth();
+        const stats = calculateAttendanceStats(attendances);
 
         await ctx.db.attendanceGroup.create({
           data: {
-            session: new Date().getFullYear().toString(),
-            month: Object.values(MONTH)[new Date().getMonth()] as string,
+            session: currentSession,
+            month: currentMonth,
             date: attendanceDate,
-            day: dayName, // Add this field to store the day name
-            name: `${batch.name}-${formatedDate}`,
-            total: attendances.length,
-            present: present.length,
-            absent: absent.length,
+            day: dayName,
+            name: `${batch.name}-${formattedDate}`,
+            total: stats.total,
+            present: stats.present,
+            absent: stats.absent,
             classNameId: batch.classNameId,
             batchId,
             attendances: {
               createMany: {
                 data: attendances.map((attendance) => ({
-                  session: new Date().getFullYear().toString(),
-                  month: Object.values(MONTH)[new Date().getMonth()] as string,
+                  session: currentSession,
+                  month: currentMonth,
                   date: attendanceDate,
                   day: dayName,
                   status: attendance.status,
@@ -76,13 +101,13 @@ export const studentAttendanceRouter = {
           },
         });
 
-        return { success: true, message: "Attendance taken" };
+        return { success: true, message: "Attendance taken successfully" };
       } catch (error) {
-        console.error("Error creating attendance", error);
-        return { success: false, message: "Internal Server Error" };
+        return handleError(error, "creating attendance");
       }
     }),
-  updateMany: permissionProcedure("attendance_attendance", "update")
+
+  updateMany: permissionProcedure("student_attendance", "update")
     .input(
       z.object({
         attendances: AttendanceSchema.shape.attendances,
@@ -93,15 +118,24 @@ export const studentAttendanceRouter = {
       const { attendances, attendanceId } = input;
 
       try {
-        const existingAttendances = await ctx.db.attendanceGroup.findUnique({
-          where: {
-            id: attendanceId,
+        const existingAttendance = await ctx.db.attendanceGroup.findUnique({
+          where: { id: attendanceId },
+          select: {
+            date: true,
+            classNameId: true,
+            batchId: true,
           },
         });
 
-        if (!existingAttendances) {
+        if (!existingAttendance) {
           return { success: false, message: "Attendance not found" };
         }
+
+        const attendanceDate = new Date(existingAttendance.date);
+        const dayName = format(attendanceDate, "EEEE");
+        const currentSession = getCurrentSession();
+        const currentMonth = getCurrentMonth();
+        const stats = calculateAttendanceStats(attendances);
 
         await ctx.db.$transaction(
           async (tx) => {
@@ -113,60 +147,77 @@ export const studentAttendanceRouter = {
 
             await tx.attendance.createMany({
               data: attendances.map((attendance) => ({
-                session: new Date().getFullYear().toString(),
-                month: Object.values(MONTH)[new Date().getMonth()] as string,
-                date: new Date(existingAttendances.date),
-                day: format(new Date(existingAttendances.date), "EEEE"),
+                session: currentSession,
+                month: currentMonth,
+                date: attendanceDate,
+                day: dayName,
                 status: attendance.status,
-                classNameId: existingAttendances.classNameId,
-                batchId: existingAttendances.batchId,
+                classNameId: existingAttendance.classNameId,
+                batchId: existingAttendance.batchId,
                 studentId: attendance.studentId,
                 attendenceGroupId: attendanceId,
               })),
             });
+
+            await tx.attendanceGroup.update({
+              where: { id: attendanceId },
+              data: {
+                total: stats.total,
+                present: stats.present,
+                absent: stats.absent,
+              },
+            });
           },
           {
-            maxWait: 15000,
-            timeout: 10000,
+            timeout: 15000,
+            maxWait: 10000,
           }
         );
 
-        return { success: true, message: "Attendance updated" };
+        return { success: true, message: "Attendance updated successfully" };
       } catch (error) {
-        console.error("Error creating attendance", error);
-        return { success: false, message: "Internal Server Error" };
+        return handleError(error, "updating attendance");
       }
     }),
-  deleteOne: permissionProcedure("attendance_attendance", "delete")
+
+  deleteOne: permissionProcedure("student_attendance", "delete")
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
-      const attendanceId = input;
-
       try {
-        const existingAttendance = await ctx.db.attendanceGroup.findUnique({
-          where: { id: attendanceId },
+        await ctx.db.attendanceGroup.delete({
+          where: { id: input },
         });
 
-        if (!existingAttendance) {
+        return { success: true, message: "Attendance deleted successfully" };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "P2025"
+        ) {
           return { success: false, message: "Attendance not found" };
         }
-
-        await ctx.db.attendanceGroup.delete({
-          where: { id: attendanceId },
-        });
-
-        return { success: true, message: "Attendance deleted" };
-      } catch (error) {
-        console.error("Error creating attendance", error);
-        return { success: false, message: "Internal Server Error" };
+        return handleError(error, "deleting attendance");
       }
     }),
-  getOne: protectedProcedure.input(z.string()).query(async ({ input, ctx }) => {
-    const attendanceId = input;
 
+  getOne: protectedProcedure.input(z.string()).query(async ({ input, ctx }) => {
     const attendance = await ctx.db.attendanceGroup.findUnique({
-      where: { id: attendanceId },
-      include: {
+      where: { id: input },
+      select: {
+        id: true,
+        name: true,
+        date: true,
+        day: true,
+        session: true,
+        month: true,
+        total: true,
+        present: true,
+        absent: true,
+        classNameId: true,
+        batchId: true,
+        createdAt: true,
         className: {
           select: {
             name: true,
@@ -179,15 +230,7 @@ export const studentAttendanceRouter = {
         },
         attendances: {
           include: {
-            student: {
-              select: {
-                studentId: true,
-                name: true,
-                imageUrl: true,
-                mPhone: true,
-                id: true,
-              },
-            },
+            student: true,
           },
         },
       },
@@ -195,44 +238,54 @@ export const studentAttendanceRouter = {
 
     return attendance;
   }),
+
   getByStudent: protectedProcedure
     .input(
       z.object({
         studentId: z.string(),
-        page: z.number(),
+        page: z.number().min(1).default(1),
       })
     )
     .query(async ({ input, ctx }) => {
       const { studentId, page } = input;
+      const limit = 5;
+
+      const where = { studentId };
 
       const [attendances, totalCount] = await Promise.all([
         ctx.db.attendance.findMany({
-          where: {
-            studentId,
+          where,
+          select: {
+            id: true,
+            status: true,
+            date: true,
+            day: true,
+            month: true,
+            session: true,
+            createdAt: true,
           },
           orderBy: {
             createdAt: "desc",
           },
-          take: 5,
-          skip: (page - 1) * 5,
+          take: limit,
+          skip: (page - 1) * limit,
         }),
-        ctx.db.attendance.count({
-          where: {
-            studentId,
-          },
-        }),
+        ctx.db.attendance.count({ where }),
       ]);
 
       return {
         attendances,
         totalCount,
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
       };
     }),
-  getMany: permissionProcedure("attendance_attendance", "read")
+
+  getMany: permissionProcedure("student_attendance", "read")
     .input(
       z.object({
-        page: z.number(),
-        limit: z.number().min(1).max(100),
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(10),
         sort: z.string().nullish(),
         session: z.string().nullish(),
         month: z.string().nullish(),
@@ -245,28 +298,31 @@ export const studentAttendanceRouter = {
       const { page, limit, sort, classNameId, batchId, date, session, month } =
         input;
 
-      const defaultSession = session
-        ? session
-        : new Date().getFullYear().toString();
+      const where: Prisma.AttendanceGroupWhereInput = {
+        ...buildSessionFilter(session),
+        ...(month && { month }),
+        ...(classNameId && { classNameId }),
+        ...(batchId && { batchId }),
+        ...(date && { date: new Date(date) }),
+      };
 
       const [attendances, totalCount] = await Promise.all([
         ctx.db.attendanceGroup.findMany({
-          where: {
-            session: defaultSession,
-            ...(month && {
-              month: month,
-            }),
-            ...(classNameId && {
-              classNameId: classNameId,
-            }),
-            ...(batchId && {
-              batchId: batchId,
-            }),
-            ...(date && {
-              date: new Date(date),
-            }),
-          },
-          include: {
+          where,
+          select: {
+            id: true,
+            name: true,
+            date: true,
+            day: true,
+            session: true,
+            month: true,
+            total: true,
+            present: true,
+            absent: true,
+            classNameId: true,
+            batchId: true,
+            createdAt: true,
+            updatedAt: true,
             className: {
               select: {
                 name: true,
@@ -284,28 +340,14 @@ export const studentAttendanceRouter = {
           take: limit,
           skip: (page - 1) * limit,
         }),
-        ctx.db.attendanceGroup.count({
-          where: {
-            session: defaultSession,
-            ...(month && {
-              month: month,
-            }),
-            ...(classNameId && {
-              classNameId: classNameId,
-            }),
-            ...(batchId && {
-              batchId: batchId,
-            }),
-            ...(date && {
-              date: new Date(date),
-            }),
-          },
-        }),
+        ctx.db.attendanceGroup.count({ where }),
       ]);
 
       return {
         attendances,
         totalCount,
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
       };
     }),
 } satisfies TRPCRouterRecord;

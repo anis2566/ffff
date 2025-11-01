@@ -1,7 +1,7 @@
 "use client";
 
 import { Filter } from "lucide-react";
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -42,23 +42,13 @@ export const MobileFilter = () => {
   const [filter, setFilter] = useGetClasses();
 
   // Memoize the hasAnyModified check
-  const hasAnyModified = useMemo(
-    () =>
-      !!filter.search ||
-      filter.limit !== DEFAULT_PAGE_SIZE ||
-      filter.page !== DEFAULT_PAGE ||
-      !!filter.sort ||
-      !!filter.level ||
-      !!filter.session,
-    [
-      filter.search,
-      filter.limit,
-      filter.page,
-      filter.sort,
-      filter.level,
-      filter.session,
-    ]
-  );
+  const hasAnyModified =
+    !!filter.search ||
+    filter.limit !== DEFAULT_PAGE_SIZE ||
+    filter.page !== DEFAULT_PAGE ||
+    !!filter.sort ||
+    !!filter.level ||
+    !!filter.session;
 
   // Generic handler factory to reduce duplication
   const createFilterHandler = useCallback(
@@ -74,22 +64,22 @@ export const MobileFilter = () => {
     [setFilter]
   );
 
-  const handleSortChange = useMemo(
+  const handleSortChange = useCallback(
     () => createFilterHandler("sort"),
     [createFilterHandler]
   );
 
-  const handleLimitChange = useMemo(
+  const handleLimitChange = useCallback(
     () => createFilterHandler("limit", (v) => parseInt(v, 10)),
     [createFilterHandler]
   );
 
-  const handleLevelChange = useMemo(
+  const handleLevelChange = useCallback(
     () => createFilterHandler("level"),
     [createFilterHandler]
   );
 
-  const handleSessionChange = useMemo(
+  const handleSessionChange = useCallback(
     () => createFilterHandler("session"),
     [createFilterHandler]
   );
@@ -151,7 +141,7 @@ export const MobileFilter = () => {
             showInMobile
           />
           <FilterSelect
-            value={filter.limit.toString()}
+            value={""}
             onChange={handleLimitChange}
             placeholder="Limit"
             options={PAGE_SIZE_OPTIONS}

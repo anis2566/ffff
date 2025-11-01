@@ -19,14 +19,15 @@ import { ListActionLink } from "@/components/list-action-link";
 
 import { useDeleteBatch } from "@/hooks/use-batch";
 import Link from "next/link";
+import { usePermissions } from "@/hooks/use-user-permission";
 
 interface BatchWithRelations extends Batch {
   room: {
     name: string;
   };
-  students: {
-    id: string;
-  }[]
+  _count: {
+    students: number;
+  };
 }
 
 interface BatchListProps {
@@ -35,6 +36,7 @@ interface BatchListProps {
 
 export const BatchList = ({ batches }: BatchListProps) => {
   const { onOpen } = useDeleteBatch();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -46,12 +48,13 @@ export const BatchList = ({ batches }: BatchListProps) => {
           <TableHead>Time</TableHead>
           <TableHead>Room</TableHead>
           <TableHead>Students</TableHead>
+          <TableHead>Session</TableHead>
           <TableHead>Action</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {batches.map((batch) => (
-          <TableRow key={batch.id}>
+          <TableRow key={batch.id} className="even:bg-muted">
             <TableCell className="hover:underline">
               <Link href={`/batch/${batch.id}`}>{batch.name}</Link>
             </TableCell>
@@ -62,24 +65,28 @@ export const BatchList = ({ batches }: BatchListProps) => {
               {formatTime(batch.time[batch.time.length - 1] ?? "", "end")}
             </TableCell>
             <TableCell>{batch.room.name}</TableCell>
-            <TableCell>{batch.students.length}</TableCell>
+            <TableCell>{batch._count.students}</TableCell>
+            <TableCell>{batch.session}</TableCell>
             <TableCell>
               <ListActions>
                 <ListActionLink
                   title="View"
                   href={`/batch/${batch.id}`}
                   icon={Eye}
+                  hasPermission={hasPermission("batch", "read")}
                 />
                 <ListActionLink
                   title="Edit"
                   href={`/batch/edit/${batch.id}`}
                   icon={Edit}
+                  hasPermission={hasPermission("batch", "update")}
                 />
                 <ListActionButton
                   isDanger
                   title="Delete"
                   icon={Trash2}
                   onClick={() => onOpen(batch.id)}
+                  hasPermission={hasPermission("batch", "delete")}
                 />
               </ListActions>
             </TableCell>

@@ -23,6 +23,7 @@ import {
   AvatarImage,
 } from "@workspace/ui/components/avatar";
 import { useChangeRole, useDeleteUser } from "@/hooks/use-user";
+import { usePermissions } from "@/hooks/use-user-permission";
 
 interface UserWithRelations extends User {
   roles: {
@@ -37,6 +38,7 @@ interface UserListProps {
 export const UserList = ({ users }: UserListProps) => {
   const { onOpen } = useDeleteUser();
   const { onOpen: onChange } = useChangeRole();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -51,7 +53,7 @@ export const UserList = ({ users }: UserListProps) => {
       </TableHeader>
       <TableBody>
         {users.map((user) => (
-          <TableRow key={user.id}>
+          <TableRow key={user.id} className="even:bg-muted">
             <TableCell>
               <Avatar>
                 <AvatarImage src={user.image || ""} />
@@ -84,12 +86,14 @@ export const UserList = ({ users }: UserListProps) => {
                       user.roles.map((r) => r.name)
                     )
                   }
+                  hasPermission={hasPermission("user", "update")}
                 />
                 <ListActionButton
                   title="Delete"
                   icon={Trash2}
                   isDanger
                   onClick={() => onOpen(user.id)}
+                  hasPermission={hasPermission("user", "delete")}
                 />
               </ListActions>
             </TableCell>

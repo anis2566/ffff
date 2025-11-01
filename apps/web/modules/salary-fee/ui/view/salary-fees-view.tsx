@@ -12,6 +12,7 @@ import { useGetSalaryFees } from "../../filters/use-get-salary-fees";
 import { useCreateSalaryFee } from "@/hooks/use-salary-fee";
 import { FeeList } from "../components/fee-list";
 import { Filter } from "../components/filter";
+import { useCallback } from "react";
 
 export const SalaryFeesView = () => {
   const trpc = useTRPC();
@@ -22,26 +23,33 @@ export const SalaryFeesView = () => {
     trpc.salaryFee.getMany.queryOptions(filters)
   );
 
+  const { fees = [], totalCount = 0 } = data;
+
+  const handlePageChange = useCallback(
+    (page: number) => setFilters({ page }),
+    [setFilters]
+  );
+
   return (
     <ListCardWrapper
       title="Manage Fee"
-      value={data?.totalCount}
+      value={totalCount}
       actionButtons
       onClickAction={onOpen}
     >
       <Filter />
-      <FeeList fees={data?.fees || []} />
+      <FeeList fees={fees} />
       <DesktopPagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
       <MobilePagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
     </ListCardWrapper>
   );

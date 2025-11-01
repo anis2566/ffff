@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/select";
+import { cn } from "../lib/utils";
 
 interface SelectOption {
   label: string;
@@ -37,6 +38,7 @@ interface FormSelectProps<T extends FieldValues> {
     ComponentProps<typeof Select>,
     "onValueChange" | "defaultValue" | "disabled" | "value"
   >;
+  onClick?: (value: string) => void;
 }
 
 export function FormSelect<T extends FieldValues>({
@@ -51,6 +53,7 @@ export function FormSelect<T extends FieldValues>({
   triggerClassName,
   contentClassName,
   selectProps,
+  onClick,
 }: FormSelectProps<T>) {
   return (
     <FormField
@@ -63,13 +66,19 @@ export function FormSelect<T extends FieldValues>({
             onValueChange={(value) => {
               field.onChange(value);
               onValueChange?.(value);
+              onClick?.(value);
             }}
             value={field.value}
             disabled={disabled}
             {...selectProps}
           >
             <FormControl>
-              <SelectTrigger className={triggerClassName}>
+              <SelectTrigger
+                className={cn(
+                  "w-full rounded-xs shadow-none dark:bg-background dark:hover:bg-background",
+                  triggerClassName
+                )}
+              >
                 <SelectValue placeholder={placeholder} />
               </SelectTrigger>
             </FormControl>

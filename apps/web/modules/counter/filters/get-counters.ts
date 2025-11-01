@@ -3,7 +3,7 @@ import { parseAsString, parseAsInteger, createLoader } from "nuqs/server";
 import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "@workspace/utils/constant";
 
 const filterParmas = {
-  type: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
+  session: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
   page: parseAsInteger
     .withDefault(DEFAULT_PAGE)
     .withOptions({ clearOnDefault: true }),

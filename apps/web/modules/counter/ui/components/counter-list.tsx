@@ -16,6 +16,7 @@ import {
 import { ListActionButton } from "@/components/list-action-button";
 
 import { useDeleteCounter, useEditCounter } from "@/hooks/use-counter";
+import { usePermissions } from "@/hooks/use-user-permission";
 
 interface ConterListProps {
   counters: Counter[];
@@ -24,6 +25,7 @@ interface ConterListProps {
 export const CounterList = ({ counters }: ConterListProps) => {
   const { onOpen } = useDeleteCounter();
   const { onOpen: onEdit } = useEditCounter();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -31,28 +33,32 @@ export const CounterList = ({ counters }: ConterListProps) => {
         <TableRow className="bg-background/60">
           <TableHead>Type</TableHead>
           <TableHead>Value</TableHead>
+          <TableHead>Session</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {counters.map((counter) => (
-          <TableRow key={counter.id}>
+          <TableRow key={counter.id} className="even:bg-muted">
             <TableCell>{counter.type}</TableCell>
             <TableCell>{counter.value}</TableCell>
+            <TableCell>{counter.session}</TableCell>
             <TableCell>
               <ListActions>
                 <ListActionButton
                   title="Edit"
                   icon={Edit}
                   onClick={() =>
-                    onEdit(counter.id, counter.type, counter.value.toString())
+                    onEdit(counter.id, counter.session, counter.type, counter.value.toString())
                   }
+                  hasPermission={hasPermission("counter", "update")}
                 />
                 <ListActionButton
                   title="Delete"
                   icon={Trash2}
                   isDanger
                   onClick={() => onOpen(counter.id)}
+                  hasPermission={hasPermission("counter", "delete")}
                 />
               </ListActions>
             </TableCell>

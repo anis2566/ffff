@@ -1,9 +1,20 @@
 import type { TRPCRouterRecord } from "@trpc/server";
+import type { Prisma } from "@workspace/db";
 import z from "zod";
 
 import { permissionProcedure, protectedProcedure } from "../trpc";
 
 import { HouseSchema } from "@workspace/utils/schemas";
+
+// Shared error handler
+const handleError = (error: unknown, operation: string) => {
+  console.error(`Error ${operation}:`, error);
+  return { success: false, message: "Internal Server Error" };
+};
+
+// Build search filter with proper typing
+const buildSearchFilter = (search?: string | null): Prisma.HouseWhereInput =>
+  search ? { name: { contains: search, mode: "insensitive" as const } } : {};
 
 export const houseRouter = {
   createOne: permissionProcedure("house", "create")
@@ -14,6 +25,7 @@ export const houseRouter = {
       try {
         const existingHouse = await ctx.db.house.findFirst({
           where: { name },
+          select: { id: true },
         });
 
         if (existingHouse) {
@@ -27,12 +39,12 @@ export const houseRouter = {
           },
         });
 
-        return { success: true, message: "House created" };
+        return { success: true, message: "House created successfully" };
       } catch (error) {
-        console.error("Error creating house", error);
-        return { success: false, message: "Internal Server Error" };
+        return handleError(error, "creating house");
       }
     }),
+
   updateOne: permissionProcedure("house", "update")
     .input(
       z.object({
@@ -44,14 +56,6 @@ export const houseRouter = {
       const { id, name, roomCount } = input;
 
       try {
-        const existingHouse = await ctx.db.house.findUnique({
-          where: { id },
-        });
-
-        if (!existingHouse) {
-          return { success: false, message: "House not found" };
-        }
-
         await ctx.db.house.update({
           where: { id },
           data: {
@@ -60,36 +64,42 @@ export const houseRouter = {
           },
         });
 
-        return { success: true, message: "House updated" };
+        return { success: true, message: "House updated successfully" };
       } catch (error) {
-        console.error("Error updating house", error);
-        return { success: false, message: "Internal Server Error" };
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "P2025"
+        ) {
+          return { success: false, message: "House not found" };
+        }
+        return handleError(error, "updating house");
       }
     }),
+
   deleteOne: permissionProcedure("house", "delete")
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
-      const houseId = input;
-
       try {
-        const existingHouse = await ctx.db.house.findUnique({
-          where: { id: houseId },
+        await ctx.db.house.delete({
+          where: { id: input },
         });
 
-        if (!existingHouse) {
+        return { success: true, message: "House deleted successfully" };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "P2025"
+        ) {
           return { success: false, message: "House not found" };
         }
-
-        await ctx.db.house.delete({
-          where: { id: houseId },
-        });
-
-        return { success: true, message: "House deleted" };
-      } catch (error) {
-        console.error("Error deleting house", error);
-        return { success: false, message: "Internal Server Error" };
+        return handleError(error, "deleting house");
       }
     }),
+
   forSelect: protectedProcedure
     .input(
       z.object({
@@ -99,62 +109,55 @@ export const houseRouter = {
     .query(async ({ input, ctx }) => {
       const { query } = input;
 
-      const housess = await ctx.db.house.findMany({
-        where: {
-          ...(query && {
-            name: {
-              contains: query,
-              mode: "insensitive",
-            },
-          }),
-        },
+      const houses = await ctx.db.house.findMany({
+        where: buildSearchFilter(query),
         select: {
           id: true,
           name: true,
         },
       });
 
-      return housess;
+      return houses;
     }),
-  getOne: protectedProcedure.input(z.string()).query(async ({ input, ctx }) => {
-    const classId = input;
 
-    const houseData = await ctx.db.house.findUnique({
-      where: { id: classId },
+  getOne: protectedProcedure.input(z.string()).query(async ({ input, ctx }) => {
+    const house = await ctx.db.house.findUnique({
+      where: { id: input },
     });
 
-    if (!houseData) {
+    if (!house) {
       throw new Error("House not found");
     }
 
-    return houseData;
+    return house;
   }),
+
   getMany: permissionProcedure("house", "read")
     .input(
       z.object({
-        page: z.number(),
-        limit: z.number().min(1).max(100),
-        sort: z.string().nullish(),
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(10),
+        sort: z.enum(["asc", "desc"]).nullish(),
         search: z.string().nullish(),
       })
     )
     .query(async ({ input, ctx }) => {
       const { page, limit, sort, search } = input;
 
+      const where = buildSearchFilter(search);
+
       const [houses, totalCount] = await Promise.all([
         ctx.db.house.findMany({
-          where: {
-            ...(search && {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
-            }),
-          },
-          include: {
-            rooms: {
+          where,
+          select: {
+            id: true,
+            name: true,
+            roomCount: true,
+            createdAt: true,
+            updatedAt: true,
+            _count: {
               select: {
-                id: true,
+                rooms: true,
               },
             },
           },
@@ -164,21 +167,14 @@ export const houseRouter = {
           take: limit,
           skip: (page - 1) * limit,
         }),
-        ctx.db.house.count({
-          where: {
-            ...(search && {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
-            }),
-          },
-        }),
+        ctx.db.house.count({ where }),
       ]);
 
       return {
         houses,
         totalCount,
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
       };
     }),
 } satisfies TRPCRouterRecord;

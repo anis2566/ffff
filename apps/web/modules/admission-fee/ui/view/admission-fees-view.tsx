@@ -2,6 +2,7 @@
 
 import { useTRPC } from "@/trpc/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 import { ListCardWrapper } from "@workspace/ui/shared/list-card-wrapper";
 import { DesktopPagination } from "@workspace/ui/shared/desktop-pagination";
@@ -22,26 +23,33 @@ export const AdmissionFeesView = () => {
     trpc.admissionFee.getMany.queryOptions(filters)
   );
 
+  const { fees = [], totalCount = 0 } = data;
+
+  const handlePageChange = useCallback(
+    (page: number) => setFilters({ page }),
+    [setFilters]
+  );
+
   return (
     <ListCardWrapper
       title="Manage Fee"
-      value={data?.totalCount}
+      value={totalCount}
       actionButtons
       onClickAction={onOpen}
     >
       <Filter />
-      <FeeList fees={data?.fees || []} />
+      <FeeList fees={fees} />
       <DesktopPagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
       <MobilePagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
     </ListCardWrapper>
   );

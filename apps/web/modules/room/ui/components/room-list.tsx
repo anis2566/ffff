@@ -14,13 +14,16 @@ import {
 } from "@workspace/ui/components/table";
 
 import { ListActionButton } from "@/components/list-action-button";
-import { ListActionLink } from "@/components/list-action-link";
 
-import { useDeleteRoom } from "@/hooks/use-room";
+import { useDeleteRoom, useEditRoom } from "@/hooks/use-room";
+import { usePermissions } from "@/hooks/use-user-permission";
 
 interface RoomWithRelation extends Room {
   house: {
     name: string;
+  };
+  _count: {
+    batches: number;
   };
 }
 
@@ -30,6 +33,8 @@ interface HouseListProps {
 
 export const RoomList = ({ rooms }: HouseListProps) => {
   const { onOpen } = useDeleteRoom();
+  const { onOpen: onEdit } = useEditRoom();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -54,19 +59,29 @@ export const RoomList = ({ rooms }: HouseListProps) => {
             <TableCell>
               {(room.availableTimes.length - room.bookTimes.length) / 2} hours
             </TableCell>
-            <TableCell>5</TableCell>
+            <TableCell>{room._count.batches}</TableCell>
             <TableCell>
               <ListActions>
-                <ListActionLink
+                <ListActionButton
                   title="Edit"
-                  href={`/room/edit/${room.id}`}
                   icon={Edit}
+                  onClick={() =>
+                    onEdit(
+                      room.id,
+                      room.houseId,
+                      room.name,
+                      room.capacity,
+                      room.availableTimes
+                    )
+                  }
+                  hasPermission={hasPermission("room", "update")}
                 />
                 <ListActionButton
                   isDanger
                   title="Delete"
                   icon={Trash2}
                   onClick={() => onOpen(room.id)}
+                  hasPermission={hasPermission("room", "delete")}
                 />
               </ListActions>
             </TableCell>

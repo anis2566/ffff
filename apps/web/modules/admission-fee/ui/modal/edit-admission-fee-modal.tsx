@@ -28,58 +28,67 @@ import {
   AdmissionFeeSchemaType,
 } from "@workspace/utils/schemas";
 
-import { useGetAdmissionFees } from "../../filters/use-get-admission-fees";
 import { useEditAdmissionFee } from "@/hooks/use-admission-fee";
+import { Session } from "@workspace/utils/constant";
 
 export const EditAdmissionFeeModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
-  const { isOpen, onClose, feeId, classNameId, amount } = useEditAdmissionFee();
+  const { isOpen, onClose, feeId, session, classNameId, amount } =
+    useEditAdmissionFee();
   const trpc = useTRPC();
-  const [filters] = useGetAdmissionFees();
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    form.setValue("classNameId", classNameId);
-    form.setValue("amount", amount);
-  }, [classNameId, amount]);
+  const form = useForm<AdmissionFeeSchemaType>({
+    resolver: zodResolver(AdmissionFeeSchema),
+    defaultValues: {
+      session: "",
+      classNameId: "",
+      amount: "",
+    },
+  });
 
   const { data: classes } = useQuery(
     trpc.class.forSelect.queryOptions({ search: "" })
   );
 
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        session,
+        classNameId,
+        amount,
+      });
+    }
+  }, [isOpen, form, session, classNameId, amount]);
+
   const { mutate: updateAdmissionFee, isPending } = useMutation(
     trpc.admissionFee.updateOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.admissionFee.getMany.queryOptions({ ...filters })
-        );
-        onClose();
+        queryClient.invalidateQueries({
+          queryKey: trpc.admissionFee.getMany.queryKey(),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
-
-  const form = useForm<AdmissionFeeSchemaType>({
-    resolver: zodResolver(AdmissionFeeSchema),
-    defaultValues: {
-      classNameId: "",
-      amount: "",
-    },
-  });
 
   const onSubmit = (data: AdmissionFeeSchemaType) => {
     setButtonState("loading");
@@ -103,6 +112,14 @@ export const EditAdmissionFeeModal = () => {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormSelect
               form={form}
+              name="session"
+              label="Session"
+              placeholder="Select session"
+              options={Session}
+              triggerClassName="w-full"
+            />
+            <FormSelect
+              form={form}
               name="classNameId"
               label="Class"
               placeholder="Select class"
@@ -123,10 +140,6 @@ export const EditAdmissionFeeModal = () => {
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Updating..."
-              successText="Updated!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

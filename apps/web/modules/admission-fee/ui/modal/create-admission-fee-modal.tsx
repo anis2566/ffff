@@ -28,17 +28,30 @@ import {
   AdmissionFeeSchemaType,
 } from "@workspace/utils/schemas";
 
-import { useGetAdmissionFees } from "../../filters/use-get-admission-fees";
 import { useCreateAdmissionFee } from "@/hooks/use-admission-fee";
+import { Session } from "@workspace/utils/constant";
+
+const DEFAULT_VALUES: AdmissionFeeSchemaType = {
+  session: "",
+  classNameId: "",
+  amount: "",
+};
 
 export const CreateAdmissionFeeModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, onClose } = useCreateAdmissionFee();
   const trpc = useTRPC();
-  const [filters] = useGetAdmissionFees();
   const queryClient = useQueryClient();
+
+  const form = useForm<AdmissionFeeSchemaType>({
+    resolver: zodResolver(AdmissionFeeSchema),
+    defaultValues: {
+      session: "",
+      classNameId: "",
+      amount: "",
+    },
+  });
 
   const { data: classes } = useQuery(
     trpc.class.forSelect.queryOptions({ search: "" })
@@ -46,47 +59,45 @@ export const CreateAdmissionFeeModal = () => {
 
   const { mutate: createAdmissionFee, isPending } = useMutation(
     trpc.admissionFee.createOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.admissionFee.getMany.queryOptions({ ...filters })
-        );
-        form.reset({
-          classNameId: "",
-          amount: "",
+        queryClient.invalidateQueries({
+          queryKey: trpc.admissionFee.getMany.queryKey(),
         });
-        onClose();
+        form.reset(DEFAULT_VALUES);
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
 
-  const form = useForm<AdmissionFeeSchemaType>({
-    resolver: zodResolver(AdmissionFeeSchema),
-    defaultValues: {
-      classNameId: "",
-      amount: "",
-    },
-  });
-
   const onSubmit = (data: AdmissionFeeSchemaType) => {
-    setButtonState("loading");
     createAdmissionFee(data);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Set up your fee</DialogTitle>
@@ -96,6 +107,14 @@ export const CreateAdmissionFeeModal = () => {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormSelect
+              form={form}
+              name="session"
+              label="Session"
+              placeholder="Select session"
+              options={Session}
+              triggerClassName="w-full"
+            />
             <FormSelect
               form={form}
               name="classNameId"
@@ -118,10 +137,6 @@ export const CreateAdmissionFeeModal = () => {
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Submitting..."
-              successText="Submitted!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

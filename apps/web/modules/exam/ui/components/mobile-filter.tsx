@@ -1,7 +1,7 @@
 "use client";
 
 import { Filter } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -21,17 +21,34 @@ import {
 } from "@workspace/utils/constant";
 import { ResetFilter } from "@workspace/ui/shared/reset-filter";
 import { Separator } from "@workspace/ui/components/separator";
-import { Batch, ClassName, ExamCategory, Subject } from "@workspace/db";
 import { FilterCalendar } from "@workspace/ui/shared/filter-calendar";
 
 import { useGetExams } from "../../filters/use-get-exams";
 
 interface MobileFilterProps {
-  classes: ClassName[];
-  batches: Batch[];
-  subjects: Subject[];
-  categories: ExamCategory[];
+  classes: {
+    label: string;
+    value: string;
+  }[];
+  batches: {
+    label: string;
+    value: string;
+  }[];
+  subjects: {
+    label: string;
+    value: string;
+  }[];
+  categories: {
+    label: string;
+    value: string;
+  }[];
 }
+
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
 
 export const MobileFilter = ({
   classes,
@@ -43,66 +60,6 @@ export const MobileFilter = ({
 
   const [filter, setFilter] = useGetExams();
 
-  const handleSortChange = (value: string) => {
-    try {
-      setFilter({ sort: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleLimitChange = (value: string) => {
-    try {
-      setFilter({ limit: parseInt(value) });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleSubjectChange = (value: string) => {
-    try {
-      setFilter({ subjectId: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleCategoryChange = (value: string) => {
-    try {
-      setFilter({ categoryId: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleClassChange = (value: string) => {
-    try {
-      setFilter({ classNameId: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleBatchChange = (value: string) => {
-    try {
-      setFilter({ batchId: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
   const hasAnyModified =
     filter.limit !== 5 ||
     filter.page !== 1 ||
@@ -113,7 +70,58 @@ export const MobileFilter = ({
     filter.categoryId !== "" ||
     filter.date !== "";
 
-  const handleClear = () => {
+  const createFilterHandler = useCallback(
+    (key: string, transform?: (value: string) => any) => (value: string) => {
+      try {
+        setFilter({ [key]: transform ? transform(value) : value });
+      } catch (error) {
+        console.error(`Error setting ${key}:`, error);
+      } finally {
+        setOpen(false);
+      }
+    },
+    [setFilter]
+  );
+
+  const handleClassChange = useCallback(
+    () => createFilterHandler("classNameId"),
+    [createFilterHandler]
+  );
+
+  const handleSubjectChange = useCallback(
+    () => createFilterHandler("subjectId"),
+    [createFilterHandler]
+  );
+
+  const handleCategoryChange = useCallback(
+    () => createFilterHandler("categoryId"),
+    [createFilterHandler]
+  );
+
+  const handleBatchChange = useCallback(
+    () => createFilterHandler("batchId"),
+    [createFilterHandler]
+  );
+
+  const handleSortChange = useCallback(
+    () => createFilterHandler("sort"),
+    [createFilterHandler]
+  );
+
+  const handleLimitChange = useCallback(
+    () => createFilterHandler("limit", (v) => parseInt(v, 10)),
+    [createFilterHandler]
+  );
+
+  const selectedDate = filter.date ? new Date(filter.date) : undefined;
+
+  const handleDateChange = (date: Date | undefined) => {
+    setFilter({
+      date: date ? date.toISOString() : "",
+    });
+  };
+
+  const handleClear = useCallback(() => {
     setFilter({
       limit: DEFAULT_PAGE_SIZE,
       page: DEFAULT_PAGE,
@@ -124,15 +132,7 @@ export const MobileFilter = ({
       categoryId: "",
       date: "",
     });
-  };
-
-  const selectedDate = filter.date ? new Date(filter.date) : undefined;
-
-  const handleDateChange = (date: Date | undefined) => {
-    setFilter({
-      date: date ? date.toISOString() : "",
-    });
-  };
+  }, [setFilter]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -167,10 +167,7 @@ export const MobileFilter = ({
             value={filter.categoryId}
             onChange={handleCategoryChange}
             placeholder="Category"
-            options={categories.map((v) => ({
-              label: v.name,
-              value: v.name,
-            }))}
+            options={categories}
             className="max-w-full"
             showInMobile
           />
@@ -178,10 +175,7 @@ export const MobileFilter = ({
             value={filter.classNameId}
             onChange={handleClassChange}
             placeholder="Class"
-            options={classes.map((v) => ({
-              label: v.name,
-              value: v.name,
-            }))}
+            options={classes}
             className="max-w-full"
             showInMobile
           />
@@ -189,10 +183,7 @@ export const MobileFilter = ({
             value={filter.batchId}
             onChange={handleBatchChange}
             placeholder="Batch"
-            options={batches.map((v) => ({
-              label: v.name,
-              value: v.name,
-            }))}
+            options={batches}
             className="max-w-full"
             showInMobile
           />
@@ -200,30 +191,23 @@ export const MobileFilter = ({
             value={filter.subjectId}
             onChange={handleSubjectChange}
             placeholder="Subject"
-            options={subjects.map((v) => ({
-              label: v.name,
-              value: v.name,
-            }))}
+            options={subjects}
             className="max-w-full"
             showInMobile
           />
-
           <FilterSelect
             value={filter.sort}
             onChange={handleSortChange}
             placeholder="Sort"
-            options={Object.values(DEFAULT_SORT_OPTIONS)}
+            options={SORT_OPTIONS}
             className="max-w-full"
             showInMobile
           />
           <FilterSelect
-            value={filter.limit.toString()}
+            value={""}
             onChange={handleLimitChange}
             placeholder="Limit"
-            options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-              label: v.toString(),
-              value: v.toString(),
-            }))}
+            options={PAGE_SIZE_OPTIONS}
             className="max-w-full"
             showInMobile
           />

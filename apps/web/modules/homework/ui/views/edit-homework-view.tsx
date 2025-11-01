@@ -2,15 +2,6 @@
 
 import { useTRPC } from "@/trpc/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { ListCardWrapper } from "@workspace/ui/shared/list-card-wrapper";
-import {
-  Table,
-  TableHeader,
-  TableHead,
-  TableBody,
-  TableCell,
-  TableRow,
-} from "@workspace/ui/components/table";
 import { CardWrapper } from "@workspace/ui/shared/card-wrapper";
 import { Badge } from "@workspace/ui/components/badge";
 import { UserRoundCheck, UserRoundX, UsersRound } from "lucide-react";

@@ -24,45 +24,14 @@ import {
 
 import { ExamCategory, ExamCategoryType } from "@workspace/utils/schemas";
 
-import { useGetCategories } from "../../filters/use-get-categories";
 import { useEditCategory } from "@/hooks/use-category";
 
 export const EditCategoryModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, onClose, categoryId, name } = useEditCategory();
   const trpc = useTRPC();
-  const [filters] = useGetCategories();
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    form.setValue("name", name);
-  }, [name]);
-
-  const { mutate: updateCategory, isPending } = useMutation(
-    trpc.examCategory.updateOne.mutationOptions({
-      onError: (err) => {
-        setErrorText(err.message);
-        setButtonState("error");
-        toast.error(err.message);
-      },
-      onSuccess: async (data) => {
-        if (!data.success) {
-          setButtonState("error");
-          setErrorText(data.message);
-          toast.error(data.message);
-          return;
-        }
-        setButtonState("success");
-        toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.examCategory.getMany.queryOptions({ ...filters })
-        );
-        onClose();
-      },
-    })
-  );
 
   const form = useForm<ExamCategoryType>({
     resolver: zodResolver(ExamCategory),
@@ -71,16 +40,57 @@ export const EditCategoryModal = () => {
     },
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        name,
+      });
+    }
+  }, [isOpen, form, name]);
+
+  const { mutate: updateCategory, isPending } = useMutation(
+    trpc.examCategory.updateOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
+      onError: (err) => {
+        setButtonState("error");
+        toast.error(err.message);
+      },
+      onSuccess: async (data) => {
+        if (!data.success) {
+          setButtonState("error");
+          toast.error(data.message);
+          return;
+        }
+        setButtonState("success");
+        toast.success(data.message);
+        await queryClient.invalidateQueries({
+          queryKey: trpc.examCategory.getMany.queryKey(),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+      },
+    })
+  );
+
   const onSubmit = (data: ExamCategoryType) => {
-    setButtonState("loading");
     updateCategory({
       ...data,
       categoryId,
     });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Category</DialogTitle>
@@ -100,10 +110,6 @@ export const EditCategoryModal = () => {
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Updating..."
-              successText="Updated!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

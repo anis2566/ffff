@@ -11,6 +11,8 @@ import { useGetCategories } from "../../filters/use-get-categories";
 
 import { useCreateCategory } from "@/hooks/use-category";
 import { CategoryList } from "../components/category-list";
+import { useCallback } from "react";
+import { Filter } from "../components/filter";
 
 export const CategoriesView = () => {
   const trpc = useTRPC();
@@ -21,25 +23,33 @@ export const CategoriesView = () => {
     trpc.examCategory.getMany.queryOptions(filters)
   );
 
+  const { categories = [], totalCount = 0 } = data;
+
+  const handlePageChange = useCallback(
+    (page: number) => setFilters({ page }),
+    [setFilters]
+  );
+
   return (
     <ListCardWrapper
       title="Manage Categories"
-      value={data?.totalCount}
+      value={totalCount}
       actionButtons
       onClickAction={onOpen}
     >
-      <CategoryList categories={data?.categories || []} />
+      <Filter />
+      <CategoryList categories={categories} />
       <DesktopPagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
       <MobilePagination
-        totalCount={data?.totalCount}
+        totalCount={totalCount}
         currentPage={filters.page}
         pageSize={filters.limit}
-        onPageChange={(page) => setFilters({ page })}
+        onPageChange={handlePageChange}
       />
     </ListCardWrapper>
   );

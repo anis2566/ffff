@@ -1,10 +1,34 @@
 import type { TRPCRouterRecord } from "@trpc/server";
+import type { Prisma } from "@workspace/db";
 import z from "zod";
 
 import { permissionProcedure, protectedProcedure } from "../trpc";
 
 import { OtherPayment } from "@workspace/utils/schemas";
-import { MONTH } from "@workspace/utils/constant";
+import { currentSession, MONTH } from "@workspace/utils/constant";
+
+// Shared error handler
+const handleError = (error: unknown, operation: string) => {
+  console.error(`Error ${operation}:`, error);
+  return { success: false, message: "Internal Server Error" };
+};
+
+// Reusable where clause builder for session filtering
+const buildSessionFilter = (
+  session?: string | null
+): Prisma.OtherPaymentWhereInput =>
+  session ? { session } : { session: { in: currentSession } };
+
+// Build search filter with proper typing
+const buildSearchFilter = (
+  search?: string | null
+): Prisma.OtherPaymentWhereInput =>
+  search ? { name: { contains: search, mode: "insensitive" as const } } : {};
+
+// Get current session and month
+const getCurrentSession = () => new Date().getFullYear().toString();
+const getCurrentMonth = () =>
+  Object.values(MONTH)[new Date().getMonth()] as string;
 
 export const otherPaymentRouter = {
   createOne: permissionProcedure("income", "create")
@@ -15,19 +39,20 @@ export const otherPaymentRouter = {
       try {
         await ctx.db.otherPayment.create({
           data: {
-            session: new Date().getFullYear().toString(),
-            month: Object.values(MONTH)[new Date().getMonth()] as string,
+            session: getCurrentSession(),
+            month: getCurrentMonth(),
             name,
-            amount: parseInt(amount),
+            amount: parseInt(amount, 10),
+            updatedBy: ctx?.session?.user.name,
           },
         });
 
-        return { success: true, message: "Payment created" };
+        return { success: true, message: "Payment created successfully" };
       } catch (error) {
-        console.error("Error other payment", error);
-        return { success: false, message: "Internal Server Error" };
+        return handleError(error, "creating other payment");
       }
     }),
+
   updateOne: permissionProcedure("income", "update")
     .input(
       z.object({
@@ -39,70 +64,68 @@ export const otherPaymentRouter = {
       const { id, name, amount } = input;
 
       try {
-        const existingPayment = await ctx.db.otherPayment.findUnique({
-          where: { id },
-        });
-
-        if (!existingPayment) {
-          return { success: false, message: "Payment not found" };
-        }
-
         await ctx.db.otherPayment.update({
           where: { id },
           data: {
             name,
-            amount: parseInt(amount),
+            amount: parseInt(amount, 10),
+            updatedBy: ctx?.session?.user.name,
           },
         });
 
-        return { success: true, message: "Payment updated" };
+        return { success: true, message: "Payment updated successfully" };
       } catch (error) {
-        console.error("Error updating payment", error);
-        return { success: false, message: "Internal Server Error" };
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "P2025"
+        ) {
+          return { success: false, message: "Payment not found" };
+        }
+        return handleError(error, "updating payment");
       }
     }),
+
   deleteOne: permissionProcedure("income", "delete")
     .input(z.string())
     .mutation(async ({ input, ctx }) => {
-      const paymentId = input;
-
       try {
-        const existingPayment = await ctx.db.otherPayment.findUnique({
-          where: { id: paymentId },
+        await ctx.db.otherPayment.delete({
+          where: { id: input },
         });
 
-        if (!existingPayment) {
+        return { success: true, message: "Payment deleted successfully" };
+      } catch (error) {
+        if (
+          error &&
+          typeof error === "object" &&
+          "code" in error &&
+          error.code === "P2025"
+        ) {
           return { success: false, message: "Payment not found" };
         }
-
-        await ctx.db.otherPayment.delete({
-          where: { id: paymentId },
-        });
-
-        return { success: true, message: "Payment deleted" };
-      } catch (error) {
-        console.error("Error deleting other payment", error);
-        return { success: false, message: "Internal Server Error" };
+        return handleError(error, "deleting other payment");
       }
     }),
-  getOne: protectedProcedure.input(z.string()).query(async ({ input, ctx }) => {
-    const paymentId = input;
 
-    const paymentData = await ctx.db.otherPayment.findUnique({
-      where: { id: paymentId },
+  getOne: protectedProcedure.input(z.string()).query(async ({ input, ctx }) => {
+    const payment = await ctx.db.otherPayment.findUnique({
+      where: { id: input },
     });
 
-    if (!paymentData) {
+    if (!payment) {
       throw new Error("Payment not found");
     }
 
-    return paymentData;
+    return payment;
   }),
+
   getMany: permissionProcedure("income", "read")
     .input(
       z.object({
-        page: z.number(),
-        limit: z.number().min(1).max(100),
+        page: z.number().min(1).default(1),
+        limit: z.number().min(1).max(100).default(10),
         sort: z.string().nullish(),
         search: z.string().nullish(),
         session: z.string().nullish(),
@@ -112,49 +135,29 @@ export const otherPaymentRouter = {
     .query(async ({ input, ctx }) => {
       const { page, limit, sort, search, session, month } = input;
 
+      const where: Prisma.OtherPaymentWhereInput = {
+        ...buildSessionFilter(session),
+        ...buildSearchFilter(search),
+        ...(month && { month }),
+      };
+
       const [payments, totalCount] = await Promise.all([
         ctx.db.otherPayment.findMany({
-          where: {
-            ...(search && {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
-            }),
-            ...(session && {
-              session,
-            }),
-            ...(month && {
-              month,
-            }),
-          },
+          where,
           orderBy: {
             createdAt: sort === "asc" ? "asc" : "desc",
           },
           take: limit,
           skip: (page - 1) * limit,
         }),
-        ctx.db.otherPayment.count({
-          where: {
-            ...(search && {
-              name: {
-                contains: search,
-                mode: "insensitive",
-              },
-            }),
-            ...(session && {
-              session,
-            }),
-            ...(month && {
-              month,
-            }),
-          },
-        }),
+        ctx.db.otherPayment.count({ where }),
       ]);
 
       return {
         payments,
         totalCount,
+        currentPage: page,
+        totalPages: Math.ceil(totalCount / limit),
       };
     }),
 } satisfies TRPCRouterRecord;

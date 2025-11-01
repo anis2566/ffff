@@ -23,7 +23,6 @@ import {
   ButtonState,
   LoadingButton,
 } from "@workspace/ui/shared/loadign-button";
-import { useGetHomeworks } from "../../filters/use-get-homeworks";
 
 interface HomeworkWithRelations extends Homework {
   student: {
@@ -45,12 +44,10 @@ export default function EditHomeWorkForm({
 }: EditStudentHomeworkFormProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const trpc = useTRPC();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [filters] = useGetHomeworks();
 
   useEffect(() => {
     setSelectedIds(
@@ -62,23 +59,24 @@ export default function EditHomeWorkForm({
 
   const { mutate: updateHomework, isPending } = useMutation(
     trpc.homework.updateMany.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.homework.getMany.queryOptions({ ...filters })
-        );
+        await queryClient.invalidateQueries({
+          queryKey: trpc.homework.getMany.queryKey(),
+        });
         router.push(`/homework`);
       },
     })
@@ -119,7 +117,6 @@ export default function EditHomeWorkForm({
   };
 
   const handleSubmit = () => {
-    setButtonState("loading");
     updateHomework({
       ids: selectedIds,
       homeworkId: id,
@@ -203,15 +200,12 @@ export default function EditHomeWorkForm({
       </Table>
       <LoadingButton
         type="button"
-        onClick={handleSubmit}
-        loadingText="Updating..."
-        successText="Updated!"
-        errorText={errorText || "Failed"}
         state={buttonState}
         onStateChange={setButtonState}
         className="w-full rounded-full"
         icon={Send}
-        disabled={homeworkRecords.length === 0}
+        disabled={selectedIds.length === 0}
+        onClick={handleSubmit}
       >
         Update
       </LoadingButton>

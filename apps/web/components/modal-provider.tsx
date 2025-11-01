@@ -16,26 +16,32 @@ import { EditCounterModal } from "@/modules/counter/ui/modal/edit-counter-modal"
 import { CreateCategoryModal } from "@/modules/exam-category/ui/modal/create-category-modal";
 import { DeleteCategoryModal } from "@/modules/exam-category/ui/modal/delete-category-modal";
 import { EditCategoryModal } from "@/modules/exam-category/ui/modal/edit-category-modal";
+import { DeleteResultModal } from "@/modules/exam-result/ui/modal/delete-result-modal";
+import { ToggleResultStatusModal } from "@/modules/exam-result/ui/modal/toggle-status-modal";
 import { DeleteDocumentModal } from "@/modules/exam/ui/modal/delete-document-modal";
 import { DeleteExamModal } from "@/modules/exam/ui/modal/delete-exam-modal";
-import { DeleteResultModal } from "@/modules/exam/ui/modal/delete-result-modal";
 import { PushToDocumentModal } from "@/modules/exam/ui/modal/push-to-document-modal";
 import { PushToPrintModal } from "@/modules/exam/ui/modal/push-to-print-modal";
 import { ToggleFinishedModal } from "@/modules/exam/ui/modal/toggle-finished-modal";
 import { ToggleReceivedModal } from "@/modules/exam/ui/modal/toggle-received-modal";
-import { ToggleStatusModal } from "@/modules/exam/ui/modal/toggle-status-modal";
-import { TransactionModal } from "@/modules/fee/ui/transaction-modal";
+import { TransactionModal } from "@/modules/salary-payment/ui/transaction-modal";
 import { DeleteHomeworkModal } from "@/modules/homework/ui/modal/delete-homework-modal";
+import { CreateHouseModal } from "@/modules/house/ui/modal/create-house-modal";
 import { DeleteHouseModal } from "@/modules/house/ui/modal/delete-house-modal";
+import { EditHouseModal } from "@/modules/house/ui/modal/edit-house-modal";
 import { CreateInstituteModal } from "@/modules/institute/ui/modal/create-institute-modal";
 import { DeleteInstituteModal } from "@/modules/institute/ui/modal/delete-institute-modal";
 import { EditInstituteModal } from "@/modules/institute/ui/modal/edit-institute-modal";
+import { CreateIncomeModal } from "@/modules/other-payment/ui/modal/create-other-payment-modal";
+import { EditIncomeModal } from "@/modules/other-payment/ui/modal/edit-other-payment-modal";
 import { CreatePermissionModal } from "@/modules/permission/ui/modal/create-permission-modal";
 import { EditPermissionModal } from "@/modules/permission/ui/modal/edit-permission-modal";
 import { CreateRoleModal } from "@/modules/role/ui/modal/create-role-modal";
 import { DeleteRoleModal } from "@/modules/role/ui/modal/delete-role-modal";
 import { EditRoleModal } from "@/modules/role/ui/modal/edit-role-modal";
+import { CreateRoomModal } from "@/modules/room/ui/modal/create-room-modal";
 import { DeleteRoomModal } from "@/modules/room/ui/modal/delete-room-modal";
+import { EditRoomModal } from "@/modules/room/ui/modal/edit-room-modal";
 import { CreateSalaryFeeModal } from "@/modules/salary-fee/ui/modal/create-salary-fee-modal";
 import { DeleteSalaryFeeModal } from "@/modules/salary-fee/ui/modal/delete-salary-fee-modal";
 import { EditSalaryFeeModal } from "@/modules/salary-fee/ui/modal/edit-salary-fee-modal";
@@ -51,6 +57,8 @@ import { TogglePrntTaskStatusModal } from "@/modules/task/ui/modal/toggle-status
 import { AdvanceStatusModal } from "@/modules/teacher-advance/ui/modal/advance-status-modal";
 import { DeleteTeacherPaymentModal } from "@/modules/teacher-payment/ui/modal/delete-teacher-payment-modal";
 import { TeacherPaymentStatusModal } from "@/modules/teacher-payment/ui/modal/payment-status-modal";
+import { ActiveTeacherModal } from "@/modules/teacher/ui/modal/active-teacher-modal";
+import { DeactiveTeacherModal } from "@/modules/teacher/ui/modal/deactive-teacher-modal";
 import { DeleteTeacherModal } from "@/modules/teacher/ui/modal/delete-teacher-modal";
 import { ChangeRoleModal } from "@/modules/user/ui/modal/change-role-modal";
 import { DeleteUserModal } from "@/modules/user/ui/modal/delete-user-modal";
@@ -95,7 +103,6 @@ export const ModalProvider = () => {
       <EditCategoryModal />
       <DeleteCategoryModal />
       <DeleteExamModal />
-      <ToggleStatusModal />
       <DeleteResultModal />
       <BatchTransferModal />
       <MarkAsAbsentModal />
@@ -114,6 +121,16 @@ export const ModalProvider = () => {
       <EditPermissionModal />
       <ChangeRoleModal />
       <DeleteUserModal />
+      <CreateHouseModal />
+      <EditHouseModal />
+      <CreateRoomModal />
+      <EditRoomModal />
+      <EditCounterModal />
+      <ToggleResultStatusModal />
+      <DeactiveTeacherModal />
+      <ActiveTeacherModal />
+      <CreateIncomeModal />
+      <EditIncomeModal />
     </>
   );
 };

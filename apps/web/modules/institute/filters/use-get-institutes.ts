@@ -4,6 +4,7 @@ import { DEFAULT_PAGE, DEFAULT_PAGE_SIZE } from "@workspace/utils/constant";
 
 export const useGetInstitutes = () => {
   return useQueryStates({
+    session: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
     type: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
     search: parseAsString.withDefault("").withOptions({ clearOnDefault: true }),
     page: parseAsInteger

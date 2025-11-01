@@ -15,11 +15,13 @@ export const useCreateSubject = create<CreateSubjectState>((set) => ({
 interface EditSubjectState {
   isOpen: boolean;
   subjectId: string;
+  session: string;
   name: string;
   level: string;
   group?: string;
   onOpen: (
     subjectId: string,
+    session: string,
     name: string,
     level: string,
     group?: string
@@ -30,13 +32,19 @@ interface EditSubjectState {
 export const useEditSubject = create<EditSubjectState>((set) => ({
   isOpen: false,
   subjectId: "",
+  session: "",
   name: "",
   level: "",
   group: "",
-  onOpen: (subjectId, name, level, group) =>
-    set({ isOpen: true, subjectId, name, level, group }),
+  onOpen: (
+    subjectId: string,
+    session: string,
+    name: string,
+    level: string,
+    group?: string
+  ) => set({ isOpen: true, subjectId, session, name, level, group }),
   onClose: () =>
-    set({ isOpen: false, subjectId: "", name: "", level: "", group: "" }),
+    set({ isOpen: false, subjectId: "", session: "", name: "", level: "" }),
 }));
 
 interface DeleteSubjectState {

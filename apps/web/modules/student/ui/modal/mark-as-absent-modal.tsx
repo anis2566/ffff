@@ -3,7 +3,10 @@
 import { useMarkAbsentStudent } from "@/hooks/use-student";
 import { useTRPC } from "@/trpc/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { toast } from "sonner";
 import { Send } from "lucide-react";
 
@@ -14,7 +17,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@workspace/ui/components/dialog";
-import { Label } from "@workspace/ui/components/label";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@workspace/ui/components/form";
 import {
   Select,
   SelectContent,
@@ -26,47 +36,95 @@ import {
   ButtonState,
   LoadingButton,
 } from "@workspace/ui/shared/loadign-button";
+import { Input } from "@workspace/ui/components/input";
 
-import { useGetStudents } from "../../filters/use-get-students";
 import { StudentDeactivationReasons } from "@workspace/utils/constant";
+
+// Zod schema for form validation
+const formSchema = z
+  .object({
+    reason: z.string().min(1, "Please select a reason"),
+    customReason: z.string().optional(),
+  })
+  .refine(
+    (data) => {
+      // If "Other" is selected, customReason must be provided and valid
+      if (data.reason === "Other") {
+        return (
+          data.customReason &&
+          data.customReason.trim().length >= 3 &&
+          data.customReason.trim().length <= 200
+        );
+      }
+      return true;
+    },
+    {
+      message: "Custom reason must be between 3 and 200 characters",
+      path: ["customReason"],
+    }
+  );
+
+type FormValues = z.infer<typeof formSchema>;
 
 export const MarkAsAbsentModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
-  const [reason, setReason] = useState<string>("");
 
   const { isOpen, studentId, onClose } = useMarkAbsentStudent();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const [filters] = useGetStudents();
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      reason: "",
+      customReason: "",
+    },
+  });
+
+  const reasonValue = form.watch("reason");
+  const customReasonValue = form.watch("customReason");
+
+  // Reset form when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      form.reset();
+      setButtonState("idle");
+    }
+  }, [isOpen, form]);
 
   const { mutate: markAsAbsent, isPending } = useMutation(
     trpc.student.markAsAbsent.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.student.getMany.queryOptions({ ...filters })
-        );
-        onClose();
+        queryClient.invalidateQueries({
+          queryKey: trpc.student.getMany.queryKey(),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
 
-  const handleTransfer = () => {
-    setButtonState("loading");
-    markAsAbsent(studentId);
+  const onSubmit = (values: FormValues) => {
+    const finalReason =
+      values.reason === "Other" ? values.customReason!.trim() : values.reason;
+
+    markAsAbsent({ studentId, reason: finalReason });
   };
 
   return (
@@ -74,42 +132,86 @@ export const MarkAsAbsentModal = () => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Student Deactivation</DialogTitle>
-          <DialogDescription>Mark studnet as absent</DialogDescription>
+          <DialogDescription>Mark student as absent</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Select Reason</Label>
-            <Select onValueChange={(reason) => setReason(reason)} disabled={isPending}>
-              <SelectTrigger className="w-full rounded-xs shadow-none dark:bg-background dark:hover:bg-background">
-                <SelectValue placeholder="Select Batch" />
-              </SelectTrigger>
-              <SelectContent>
-                {StudentDeactivationReasons.map((item, index) => (
-                  <SelectItem value={item} key={index}>
-                    {item}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="reason"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    Select Reason <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <Select
+                    onValueChange={(value) => {
+                      field.onChange(value);
+                      // Clear custom reason when switching away from "Other"
+                      if (value !== "Other") {
+                        form.setValue("customReason", "");
+                      }
+                    }}
+                    value={field.value}
+                    disabled={isPending}
+                  >
+                    <FormControl>
+                      <SelectTrigger className="w-full rounded-xs shadow-none dark:bg-background dark:hover:bg-background">
+                        <SelectValue placeholder="Select Reason" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {StudentDeactivationReasons.map((item, index) => (
+                        <SelectItem value={item} key={index}>
+                          {item}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-          <LoadingButton
-            type="submit"
-            onClick={handleTransfer}
-            loadingText="Submitting..."
-            successText="Submitted!"
-            errorText={errorText || "Failed"}
-            state={buttonState}
-            onStateChange={setButtonState}
-            className="w-full rounded-full"
-            variant="default"
-            icon={Send}
-            disabled={!reason}
-          >
-            Submit
-          </LoadingButton>
-        </div>
+            {reasonValue === "Other" && (
+              <FormField
+                control={form.control}
+                name="customReason"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>
+                      Custom Reason <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Enter custom reason"
+                        disabled={isPending}
+                        className="w-full"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                    <p className="text-xs text-muted-foreground">
+                      {customReasonValue?.length || 0}/200 characters
+                    </p>
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <LoadingButton
+              type="submit"
+              state={buttonState}
+              onStateChange={setButtonState}
+              className="w-full rounded-full"
+              icon={Send}
+              disabled={isPending}
+            >
+              Submit
+            </LoadingButton>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

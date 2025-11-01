@@ -4,9 +4,8 @@ import { Send } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { useTRPC } from "@/trpc/react";
 
 import { usePushToDocument } from "@/hooks/use-exam";
@@ -26,41 +25,15 @@ import { FormInput } from "@workspace/ui/shared/form-input";
 import { Form } from "@workspace/ui/components/form";
 import { FormDateTimePicker } from "@workspace/ui/shared/form-date-time-picker";
 import { DOCUMENT_TYPE } from "@workspace/utils/constant";
+import { FormSelect } from "@workspace/ui/shared/form-select";
 
 export const PushToDocumentModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, onClose, name, subjectId, classNameId } = usePushToDocument();
 
   const trpc = useTRPC();
-  const router = useRouter();
   const queryClient = useQueryClient();
-
-  const { mutate: createExam, isPending } = useMutation(
-    trpc.document.createOne.mutationOptions({
-      onError: (err) => {
-        setErrorText(err.message);
-        setButtonState("error");
-        toast.error(err.message);
-      },
-      onSuccess: async (data) => {
-        if (!data.success) {
-          setButtonState("error");
-          setErrorText(data.message);
-          toast.error(data.message);
-          return;
-        }
-        setButtonState("success");
-        toast.success(data.message);
-        queryClient.invalidateQueries({
-          queryKey: trpc.document.getMany.queryKey(),
-        });
-        onClose();
-        router.push("/exam/document");
-      },
-    })
-  );
 
   const form = useForm<DocumentSchemaType>({
     resolver: zodResolver(DocumentSchema),
@@ -71,23 +44,73 @@ export const PushToDocumentModal = () => {
       subjectId: "",
       deliveryDate: "",
       noOfCopy: "",
+      userId: "",
     },
   });
 
   useEffect(() => {
-    form.setValue("type", DOCUMENT_TYPE.Question);
-    form.setValue("name", name);
-    form.setValue("subjectId", subjectId);
-    form.setValue("classNameId", classNameId);
-  }, [name, subjectId, classNameId]);
+    if (isOpen) {
+      form.reset({
+        type: DOCUMENT_TYPE.Question,
+        name: name ?? "",
+        classNameId: classNameId ?? "",
+        subjectId: subjectId ?? "",
+        deliveryDate: "",
+        noOfCopy: "",
+      });
+    }
+  }, [isOpen, form, name, subjectId, classNameId]);
+
+  const { data: users } = useQuery(
+    trpc.user.forSelect.queryOptions({ search: "" })
+  );
+
+  const userOptions =
+    users?.map((user) => ({
+      value: user.id,
+      label: user.name ?? "",
+    })) ?? [];
+
+  const { mutate: pushToDocument, isPending } = useMutation(
+    trpc.document.createOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
+      onError: (err) => {
+        setButtonState("error");
+        toast.error(err.message);
+      },
+      onSuccess: async (data) => {
+        if (!data.success) {
+          setButtonState("error");
+          toast.error(data.message);
+          return;
+        }
+        setButtonState("success");
+        toast.success(data.message);
+        await queryClient.invalidateQueries({
+          queryKey: trpc.document.getMany.queryKey(),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+      },
+    })
+  );
 
   const onSubmit = (data: DocumentSchemaType) => {
-    setButtonState("loading");
-    createExam(data);
+    pushToDocument(data);
+  };
+
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Push to document</DialogTitle>
@@ -118,18 +141,22 @@ export const PushToDocumentModal = () => {
                 disabled={isPending}
                 type="number"
               />
+              <FormSelect
+                form={form}
+                name="userId"
+                label="User"
+                placeholder="Select user"
+                options={userOptions}
+                disabled={isPending}
+              />
               <LoadingButton
                 type="submit"
-                onClick={form.handleSubmit(onSubmit)}
-                loadingText="Saving..."
-                successText="Saved!"
-                errorText={errorText || "Failed"}
                 state={buttonState}
                 onStateChange={setButtonState}
                 className="w-full rounded-full"
                 icon={Send}
               >
-                Save
+                Submit
               </LoadingButton>
             </form>
           </Form>

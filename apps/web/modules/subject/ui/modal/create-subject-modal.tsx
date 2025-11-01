@@ -24,65 +24,79 @@ import {
 } from "@workspace/ui/shared/loadign-button";
 
 import { SubjectSchema, SubjectSchemaType } from "@workspace/utils/schemas";
-import { GROUPS, LEVELS } from "@workspace/utils/constant";
+import { GROUPS, LEVELS, Session } from "@workspace/utils/constant";
 
 import { useCreateSubject } from "@/hooks/use-subject";
-import { useGetSubjects } from "../../filters/use-get-subjects";
+
+const DEFAULT_VALUES: SubjectSchemaType = {
+  session: "",
+  name: "",
+  level: "",
+  group: "",
+};
+
+const LEVEL_OPTIONS = Object.values(LEVELS).map((level) => ({
+  label: level,
+  value: level,
+}));
+const GROUP_OPTIONS = Object.values(GROUPS).map((group) => ({
+  label: group,
+  value: group,
+}));
 
 export const CreateSubjectModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, onClose } = useCreateSubject();
   const trpc = useTRPC();
-  const [filters] = useGetSubjects();
   const queryClient = useQueryClient();
+
+  const form = useForm<SubjectSchemaType>({
+    resolver: zodResolver(SubjectSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
 
   const { mutate: createSubject, isPending } = useMutation(
     trpc.subject.createOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.subject.getMany.queryOptions({ ...filters })
-        );
-        form.reset({
-          name: "",
-          level: "",
-          group: "",
+        queryClient.invalidateQueries({
+          queryKey: trpc.subject.getMany.queryKey(),
         });
-        onClose();
+
+        setTimeout(() => {
+          form.reset(DEFAULT_VALUES);
+          onClose();
+        }, 2000);
       },
     })
   );
 
-  const form = useForm<SubjectSchemaType>({
-    resolver: zodResolver(SubjectSchema),
-    defaultValues: {
-      name: "",
-      level: "",
-      group: "",
-    },
-  });
-
   const onSubmit = (data: SubjectSchemaType) => {
-    setButtonState("loading");
     createSubject(data);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Set up your subject</DialogTitle>
@@ -92,6 +106,14 @@ export const CreateSubjectModal = () => {
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormSelect
+              form={form}
+              name="session"
+              label="Session"
+              placeholder="Select session"
+              options={Session}
+              triggerClassName="w-full"
+            />
             <FormInput
               form={form}
               name="name"
@@ -105,10 +127,7 @@ export const CreateSubjectModal = () => {
               label="Level"
               placeholder="Select level"
               disabled={isPending}
-              options={Object.values(LEVELS).map((level) => ({
-                label: level,
-                value: level,
-              }))}
+              options={LEVEL_OPTIONS}
             />
             <FormSelect
               form={form}
@@ -116,17 +135,10 @@ export const CreateSubjectModal = () => {
               label="Group"
               placeholder="Select group"
               disabled={isPending}
-              options={Object.values(GROUPS).map((level) => ({
-                label: level,
-                value: level,
-              }))}
+              options={GROUP_OPTIONS}
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Submitting..."
-              successText="Submitted!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

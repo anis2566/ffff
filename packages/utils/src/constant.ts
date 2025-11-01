@@ -37,6 +37,7 @@ export enum RELIGION {
   Hinduism = "Hinduism",
   Christianity = "Christianity",
   Buddhism = "Buddhism",
+  Others = "Others",
 }
 
 export enum SHIFT {
@@ -201,6 +202,17 @@ export const StudentDeactivationReasons = [
   "Transfered to Another Institution",
   "Irregular Attendance",
   "Lack of Academic Performance",
+  "Other",
+];
+
+export const TeacherDeactivationReasons = [
+  "Family or Personal Issue",
+  "Disciplinary Action",
+  "Payment Due",
+  "Time Issue",
+  "Transfered to Another Institution",
+  "Relocated to Different City/Town",
+  "Irregular Attendance",
   "Other",
 ];
 
@@ -373,7 +385,7 @@ export const modules = [
   },
   {
     name: "admission_payment",
-    actions: ["create", "read", "update", "delete"],
+    actions: ["create", "read", "update", "delete", "receive_payment"],
   },
   {
     name: "batch_class",
@@ -453,7 +465,7 @@ export const modules = [
   },
   {
     name: "salary_payment",
-    actions: ["create", "read", "update", "delete"],
+    actions: ["create", "read", "update", "delete", "receive_payment"],
   },
   {
     name: "student_attendance",

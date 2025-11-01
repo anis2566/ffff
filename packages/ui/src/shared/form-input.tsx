@@ -9,6 +9,7 @@ import {
   FormMessage,
 } from "../components/form";
 import { Input } from "../components/input";
+import { cn } from "../lib/utils";
 
 interface FormInputProps<T extends FieldValues> {
   form: UseFormReturn<T>;
@@ -55,7 +56,10 @@ export function FormInput<T extends FieldValues>({
               type={type}
               placeholder={placeholder}
               disabled={disabled}
-              className={className}
+              className={cn(
+                "w-full bg-background dark:bg-background rounded-xs shadow-none",
+                className
+              )}
             />
           </FormControl>
           <FormMessage />

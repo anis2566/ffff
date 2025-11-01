@@ -24,59 +24,66 @@ import {
 
 import { ExamCategory, ExamCategoryType } from "@workspace/utils/schemas";
 
-import { useGetCategories } from "../../filters/use-get-categories";
 import { useCreateCategory } from "@/hooks/use-category";
+
+const DEFAULT_VALUES: ExamCategoryType = {
+  name: "",
+};
 
 export const CreateCategoryModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, onClose } = useCreateCategory();
   const trpc = useTRPC();
-  const [filters] = useGetCategories();
   const queryClient = useQueryClient();
+
+  const form = useForm<ExamCategoryType>({
+    resolver: zodResolver(ExamCategory),
+    defaultValues: DEFAULT_VALUES,
+  });
 
   const { mutate: createCategory, isPending } = useMutation(
     trpc.examCategory.createOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.examCategory.getMany.queryOptions({ ...filters })
-        );
-        form.reset({
-          name: "",
+        await queryClient.invalidateQueries({
+          queryKey: trpc.examCategory.getMany.queryKey(),
         });
-        onClose();
+
+        form.reset(DEFAULT_VALUES);
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
 
-  const form = useForm<ExamCategoryType>({
-    resolver: zodResolver(ExamCategory),
-    defaultValues: {
-      name: "",
-    },
-  });
-
   const onSubmit = (data: ExamCategoryType) => {
-    setButtonState("loading");
     createCategory(data);
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Set up your Category</DialogTitle>
@@ -95,10 +102,6 @@ export const CreateCategoryModal = () => {
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Submitting..."
-              successText="Submitted!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

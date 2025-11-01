@@ -37,7 +37,6 @@ interface EditExamFromProps {
 
 export const EditExamForm = ({ id }: EditExamFromProps) => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
   const [enableCq, setEnableCq] = useState<boolean>(false);
   const [enableMcq, setEnableMcq] = useState<boolean>(false);
   const [enableWritten, setEnableWritten] = useState<boolean>(false);
@@ -45,37 +44,6 @@ export const EditExamForm = ({ id }: EditExamFromProps) => {
   const trpc = useTRPC();
   const router = useRouter();
   const queryClient = useQueryClient();
-
-  const { data: exam } = useSuspenseQuery(trpc.exam.getOne.queryOptions(id));
-
-  // Changed from createOne to updateOne
-  const { mutate: updateExam, isPending } = useMutation(
-    trpc.exam.updateOne.mutationOptions({
-      onError: (err) => {
-        setErrorText(err.message);
-        setButtonState("error");
-        toast.error(err.message);
-      },
-      onSuccess: async (data) => {
-        if (!data.success) {
-          setButtonState("error");
-          setErrorText(data.message);
-          toast.error(data.message);
-          return;
-        }
-        setButtonState("success");
-        toast.success(data.message);
-        // Invalidate the exam queries to refresh data
-        queryClient.invalidateQueries({
-          queryKey: trpc.exam.getOne.queryKey(id),
-        });
-        queryClient.invalidateQueries({
-          queryKey: trpc.exam.getMany.queryKey(),
-        });
-        router.push("/exam");
-      },
-    })
-  );
 
   const form = useForm<ExamSchemaType>({
     resolver: zodResolver(ExamSchema),
@@ -93,6 +61,8 @@ export const EditExamForm = ({ id }: EditExamFromProps) => {
     },
   });
 
+  const { data: exam } = useSuspenseQuery(trpc.exam.getOne.queryOptions(id));
+
   const classNameId = form.watch("classNameId");
 
   const [
@@ -109,7 +79,61 @@ export const EditExamForm = ({ id }: EditExamFromProps) => {
     ],
   });
 
-  // Populate form with existing exam data
+  const classOptions =
+    classes?.map((classItem) => ({
+      value: classItem.id,
+      label: classItem.name,
+    })) || [];
+
+  const batchOptions =
+    batches?.map((batchItem) => ({
+      value: batchItem.id,
+      label: batchItem.name,
+    })) || [];
+
+  const subjectOptions =
+    subjects?.map((subjectItem) => ({
+      value: subjectItem.id,
+      label: subjectItem.name,
+    })) || [];
+
+  const categoryOptions =
+    categories?.map((categoryItem) => ({
+      value: categoryItem.id,
+      label: categoryItem.name,
+    })) || [];
+
+  // Changed from createOne to updateOne
+  const { mutate: updateExam, isPending } = useMutation(
+    trpc.exam.updateOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
+      onError: (err) => {
+        setButtonState("error");
+        toast.error(err.message);
+      },
+      onSuccess: async (data) => {
+        if (!data.success) {
+          setButtonState("error");
+          toast.error(data.message);
+          return;
+        }
+        setButtonState("success");
+        toast.success(data.message);
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: trpc.exam.getOne.queryKey(id),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: trpc.exam.getMany.queryKey(),
+          }),
+        ]);
+        router.push("/exam");
+      },
+    })
+  );
+
   useEffect(() => {
     if (exam) {
       form.reset({
@@ -133,7 +157,6 @@ export const EditExamForm = ({ id }: EditExamFromProps) => {
   }, [exam, form, classes, batches, subjects, categories]);
 
   const onSubmit = (data: ExamSchemaType) => {
-    setButtonState("loading");
     updateExam({ id, data });
   };
 
@@ -163,12 +186,7 @@ export const EditExamForm = ({ id }: EditExamFromProps) => {
             name="classNameId"
             label="Class"
             placeholder="Select class"
-            options={
-              classes?.map((classItem) => ({
-                label: classItem.name,
-                value: classItem.id,
-              })) || []
-            }
+            options={classOptions}
             disabled={isPending}
           />
           <FormSelect
@@ -176,12 +194,7 @@ export const EditExamForm = ({ id }: EditExamFromProps) => {
             name="batchId"
             label="Batch"
             placeholder="Select batch"
-            options={
-              batches?.map((batch) => ({
-                label: batch.name,
-                value: batch.id,
-              })) || []
-            }
+            options={batchOptions}
             disabled={isPending}
           />
           <FormSelect
@@ -189,12 +202,7 @@ export const EditExamForm = ({ id }: EditExamFromProps) => {
             name="subjectId"
             label="Subject"
             placeholder="Select subject"
-            options={
-              subjects?.map((subject) => ({
-                label: subject.name,
-                value: subject.id,
-              })) || []
-            }
+            options={subjectOptions}
             disabled={isPending}
           />
           <FormSelect
@@ -202,12 +210,7 @@ export const EditExamForm = ({ id }: EditExamFromProps) => {
             name="examCategoryId"
             label="Category"
             placeholder="Select category"
-            options={
-              categories?.map((category) => ({
-                label: category.name,
-                value: category.id,
-              })) || []
-            }
+            options={categoryOptions}
             disabled={isPending}
           />
           <FormCalendar
@@ -286,13 +289,9 @@ export const EditExamForm = ({ id }: EditExamFromProps) => {
           </Collapsible>
           <LoadingButton
             type="submit"
-            onClick={form.handleSubmit(onSubmit)}
-            loadingText="Updating..."
-            successText="Updated!"
-            errorText={errorText || "Failed"}
             state={buttonState}
             onStateChange={setButtonState}
-            className="w-full md:w-auto rounded-full"
+            className="w-full rounded-full"
             icon={Send}
           >
             Update

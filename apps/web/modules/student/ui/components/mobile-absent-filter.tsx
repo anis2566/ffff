@@ -1,7 +1,7 @@
 "use client";
 
 import { Filter } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@workspace/ui/components/button";
 import {
@@ -23,58 +23,25 @@ import {
 import { ResetFilter } from "@workspace/ui/shared/reset-filter";
 import { Separator } from "@workspace/ui/components/separator";
 import { FilterInput } from "@workspace/ui/shared/filter-input";
-import { ClassName } from "@workspace/db";
 
 import { useGetAbsentStudents } from "../../filters/use-get-absent-students";
 
 interface MobileFilterProps {
-  classes: ClassName[];
+  classes: {
+    name: string;
+  }[];
 }
 
-export const MobileAbsentFilter = ({ classes }: MobileFilterProps) => {
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
+
+export const AbsentMobileFilter = ({ classes }: MobileFilterProps) => {
   const [open, setOpen] = useState(false);
 
   const [filter, setFilter] = useGetAbsentStudents();
-
-  const handleSortChange = (value: string) => {
-    try {
-      setFilter({ sort: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleLimitChange = (value: string) => {
-    try {
-      setFilter({ limit: parseInt(value) });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleSessionChange = (value: string) => {
-    try {
-      setFilter({ session: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
-
-  const handleClassChange = (value: string) => {
-    try {
-      setFilter({ className: value });
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setOpen(false);
-    }
-  };
 
   const hasAnyModified =
     !!filter.search ||
@@ -85,7 +52,45 @@ export const MobileAbsentFilter = ({ classes }: MobileFilterProps) => {
     filter.className !== "" ||
     filter.id !== "";
 
-  const handleClear = () => {
+  const createFilterHandler = useCallback(
+    (key: string, transform?: (value: string) => any) => (value: string) => {
+      try {
+        setFilter({ [key]: transform ? transform(value) : value });
+      } catch (error) {
+        console.error(`Error setting ${key}:`, error);
+      } finally {
+        setOpen(false);
+      }
+    },
+    [setFilter]
+  );
+
+  const handleIdChange = useCallback(
+    (value: string) => setFilter({ id: value }),
+    [setFilter]
+  );
+
+  const handleClassChange = useCallback(
+    (value: string) => setFilter({ className: value }),
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    () => createFilterHandler("sort"),
+    [createFilterHandler]
+  );
+
+  const handleLimitChange = useCallback(
+    () => createFilterHandler("limit", (v) => parseInt(v, 10)),
+    [createFilterHandler]
+  );
+
+  const handleSessionChange = useCallback(
+    () => createFilterHandler("session"),
+    [createFilterHandler]
+  );
+
+  const handleClear = useCallback(() => {
     setFilter({
       search: "",
       limit: DEFAULT_PAGE_SIZE,
@@ -95,7 +100,7 @@ export const MobileAbsentFilter = ({ classes }: MobileFilterProps) => {
       className: "",
       id: "",
     });
-  };
+  }, [setFilter]);
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
@@ -122,17 +127,9 @@ export const MobileAbsentFilter = ({ classes }: MobileFilterProps) => {
             type="search"
             placeholder="id..."
             value={filter.id}
-            onChange={(value: string) => setFilter({ id: value })}
+            onChange={handleIdChange}
             showInMobile
             className="max-w-full rounded-md"
-          />
-          <FilterSelect
-            value={filter.session}
-            onChange={handleSessionChange}
-            placeholder="Session"
-            options={Session}
-            className="max-w-full"
-            showInMobile
           />
           <FilterSelect
             value={filter.className}
@@ -146,21 +143,26 @@ export const MobileAbsentFilter = ({ classes }: MobileFilterProps) => {
             showInMobile
           />
           <FilterSelect
-            value={filter.sort}
-            onChange={handleSortChange}
-            placeholder="Sort"
-            options={Object.values(DEFAULT_SORT_OPTIONS)}
+            value={filter.session}
+            onChange={handleSessionChange}
+            placeholder="Session"
+            options={Session}
             className="max-w-full"
             showInMobile
           />
           <FilterSelect
-            value={filter.limit.toString()}
+            value={filter.sort}
+            onChange={handleSortChange}
+            placeholder="Sort"
+            options={SORT_OPTIONS}
+            className="max-w-full"
+            showInMobile
+          />
+          <FilterSelect
+            value={""}
             onChange={handleLimitChange}
             placeholder="Limit"
-            options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-              label: v.toString(),
-              value: v.toString(),
-            }))}
+            options={PAGE_SIZE_OPTIONS}
             className="max-w-full"
             showInMobile
           />

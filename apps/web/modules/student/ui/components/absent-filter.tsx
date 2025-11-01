@@ -2,6 +2,7 @@
 
 import { useTRPC } from "@/trpc/react";
 import { useQuery } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 import {
   DEFAULT_PAGE,
@@ -16,7 +17,13 @@ import { FilterSelect } from "@workspace/ui/shared/filter-select";
 import { ResetFilter } from "@workspace/ui/shared/reset-filter";
 
 import { useGetAbsentStudents } from "../../filters/use-get-absent-students";
-import { MobileAbsentFilter } from "./mobile-absent-filter";
+import { AbsentMobileFilter } from "./mobile-absent-filter";
+
+const PAGE_SIZE_OPTIONS = Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
+  label: v.toString(),
+  value: v.toString(),
+}));
+const SORT_OPTIONS = Object.values(DEFAULT_SORT_OPTIONS);
 
 export const AbsentFilter = () => {
   const [filter, setFilter] = useGetAbsentStudents();
@@ -35,7 +42,37 @@ export const AbsentFilter = () => {
     filter.className !== "" ||
     filter.id !== "";
 
-  const handleClear = () => {
+  const handleSearchChange = useCallback(
+    (value: string) => setFilter({ search: value }),
+    [setFilter]
+  );
+
+  const handleClassChange = useCallback(
+    (value: string) => setFilter({ className: value }),
+    [setFilter]
+  );
+
+  const handleIdChange = useCallback(
+    (value: string) => setFilter({ id: value }),
+    [setFilter]
+  );
+
+  const handleSessionChange = useCallback(
+    (value: string) => setFilter({ session: value }),
+    [setFilter]
+  );
+
+  const handleSortChange = useCallback(
+    (value: string) => setFilter({ sort: value }),
+    [setFilter]
+  );
+
+  const handleLimitChange = useCallback(
+    (value: string) => setFilter({ limit: parseInt(value, 10) }),
+    [setFilter]
+  );
+
+  const handleClear = useCallback(() => {
     setFilter({
       search: "",
       limit: DEFAULT_PAGE_SIZE,
@@ -45,7 +82,7 @@ export const AbsentFilter = () => {
       className: "",
       id: "",
     });
-  };
+  }, [setFilter]);
 
   return (
     <div className="flex-1 flex items-center justify-between gap-x-3">
@@ -54,7 +91,7 @@ export const AbsentFilter = () => {
           type="search"
           placeholder="name..."
           value={filter.search}
-          onChange={(value: string) => setFilter({ search: value })}
+          onChange={handleSearchChange}
           showInMobile
           className="max-w-sm"
         />
@@ -62,20 +99,13 @@ export const AbsentFilter = () => {
           type="search"
           placeholder="id..."
           value={filter.id}
-          onChange={(value: string) => setFilter({ id: value })}
+          onChange={handleIdChange}
           showInMobile={false}
           className="max-w-sm"
         />
         <FilterSelect
-          value={filter.session}
-          onChange={(value: string) => setFilter({ session: value })}
-          placeholder="Session"
-          options={Session}
-          className="max-w-[110px]"
-        />
-        <FilterSelect
           value={filter.className}
-          onChange={(value: string) => setFilter({ className: value })}
+          onChange={handleClassChange}
           placeholder="Class"
           options={(classes || []).map((v) => ({
             label: v.name,
@@ -84,26 +114,30 @@ export const AbsentFilter = () => {
           className="max-w-[100px]"
         />
         <FilterSelect
-          value={filter.sort}
-          onChange={(value: string) => setFilter({ sort: value })}
-          placeholder="Sort"
-          options={Object.values(DEFAULT_SORT_OPTIONS)}
-          className="max-w-[100px]"
+          value={filter.session}
+          onChange={handleSessionChange}
+          placeholder="Session"
+          options={Session}
+          className="max-w-[120px]"
         />
         <FilterSelect
-          value={filter.limit.toString()}
-          onChange={(value: string) => setFilter({ limit: parseInt(value) })}
+          value={filter.sort}
+          onChange={handleSortChange}
+          placeholder="Sort"
+          options={SORT_OPTIONS}
+          className="max-w-[120px]"
+        />
+        <FilterSelect
+          value={""}
+          onChange={handleLimitChange}
           placeholder="Limit"
-          options={Object.values(DEFAULT_PAGE_SIZE_OPTIONS).map((v) => ({
-            label: v.toString(),
-            value: v.toString(),
-          }))}
-          className="max-w-[100px]"
+          options={PAGE_SIZE_OPTIONS}
+          className="max-w-[120px]"
         />
       </div>
       <div className="flex items-center gap-x-2">
         <ResetFilter hasModified={hasAnyModified} handleReset={handleClear} />
-        <MobileAbsentFilter classes={classes || []} />
+        <AbsentMobileFilter classes={classes || []} />
       </div>
     </div>
   );

@@ -2,7 +2,7 @@
 
 import { Edit, Trash2 } from "lucide-react";
 
-import { ClassName, SalaryFee } from "@workspace/db";
+import { SalaryFee } from "@workspace/db";
 import { ListActions } from "@workspace/ui/shared/list-actions";
 import {
   Table,
@@ -16,9 +16,12 @@ import {
 import { ListActionButton } from "@/components/list-action-button";
 
 import { useDeleteSalaryFee, useEditSalaryFee } from "@/hooks/use-salary-fee";
+import { usePermissions } from "@/hooks/use-user-permission";
 
 interface FeeWithRelation extends SalaryFee {
-  className: ClassName;
+  className: {
+    name: string;
+  };
 }
 
 interface SalaryFeeListProps {
@@ -28,25 +31,26 @@ interface SalaryFeeListProps {
 export const FeeList = ({ fees }: SalaryFeeListProps) => {
   const { onOpen } = useDeleteSalaryFee();
   const { onOpen: onEdit } = useEditSalaryFee();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
       <TableHeader>
         <TableRow className="bg-background/60">
-          <TableHead>Type</TableHead>
           <TableHead>Class</TableHead>
           <TableHead>Group</TableHead>
           <TableHead>Amount</TableHead>
+          <TableHead>Session</TableHead>
           <TableHead>Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {fees.map((fee) => (
-          <TableRow key={fee.id}>
-            <TableCell>{fee.type}</TableCell>
+          <TableRow key={fee.id} className="even:bg-muted">
             <TableCell>{fee.className.name}</TableCell>
             <TableCell>{fee.group ? fee.group : "-"}</TableCell>
             <TableCell>{fee.amount}</TableCell>
+            <TableCell>{fee.session}</TableCell>
             <TableCell>
               <ListActions>
                 <ListActionButton
@@ -54,19 +58,21 @@ export const FeeList = ({ fees }: SalaryFeeListProps) => {
                   icon={Edit}
                   onClick={() =>
                     onEdit(
-                      fee.type,
                       fee.id,
+                      fee.session,
                       fee.classNameId,
                       fee.amount.toString(),
                       fee.group || undefined
                     )
                   }
+                  hasPermission={hasPermission("salary_fee", "update")}
                 />
                 <ListActionButton
                   title="Delete"
                   icon={Trash2}
                   isDanger
                   onClick={() => onOpen(fee.id)}
+                  hasPermission={hasPermission("salary_fee", "delete")}
                 />
               </ListActions>
             </TableCell>

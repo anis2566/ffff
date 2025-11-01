@@ -29,40 +29,10 @@ import { FormTextarea } from "@workspace/ui/shared/form-textarea";
 
 export const EditRoleModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const { isOpen, onClose, roleId, name, description } = useEditRole();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    form.setValue("name", name);
-    form.setValue("description", description);
-  }, [name, name, description]);
-
-  const { mutate: updateRole, isPending } = useMutation(
-    trpc.role.updateOne.mutationOptions({
-      onError: (err) => {
-        setErrorText(err.message);
-        setButtonState("error");
-        toast.error(err.message);
-      },
-      onSuccess: async (data) => {
-        if (!data.success) {
-          setButtonState("error");
-          setErrorText(data.message);
-          toast.error(data.message);
-          return;
-        }
-        setButtonState("success");
-        toast.success(data.message);
-        queryClient.invalidateQueries({
-          queryKey: trpc.role.getMany.queryKey(),
-        });
-        onClose();
-      },
-    })
-  );
 
   const form = useForm<RoleSchemaType>({
     resolver: zodResolver(RoleSchema),
@@ -72,16 +42,58 @@ export const EditRoleModal = () => {
     },
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        name,
+        description,
+      });
+    }
+  }, [isOpen, form, name, description]);
+
+  const { mutate: updateRole, isPending } = useMutation(
+    trpc.role.updateOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
+      onError: (err) => {
+        setButtonState("error");
+        toast.error(err.message);
+      },
+      onSuccess: async (data) => {
+        if (!data.success) {
+          setButtonState("error");
+          toast.error(data.message);
+          return;
+        }
+        setButtonState("success");
+        toast.success(data.message);
+        queryClient.invalidateQueries({
+          queryKey: trpc.role.getMany.queryKey(),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
+      },
+    })
+  );
+
   const onSubmit = (data: RoleSchemaType) => {
-    setButtonState("loading");
     updateRole({
       ...data,
       roleId,
     });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={isPending ? () => {} : onClose}>
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit Role</DialogTitle>
@@ -108,10 +120,6 @@ export const EditRoleModal = () => {
             />
             <LoadingButton
               type="submit"
-              onClick={form.handleSubmit(onSubmit)}
-              loadingText="Updating..."
-              successText="Updated!"
-              errorText={errorText || "Failed"}
               state={buttonState}
               onStateChange={setButtonState}
               className="w-full rounded-full"

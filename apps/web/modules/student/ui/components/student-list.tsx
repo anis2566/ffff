@@ -3,7 +3,7 @@
 import { ArrowRightLeft, Edit, Eye, Trash2, UserRoundX } from "lucide-react";
 import Link from "next/link";
 
-import { ClassName, Student, StudentStatus } from "@workspace/db";
+import { Student, StudentStatus } from "@workspace/db";
 import { ListActions } from "@workspace/ui/shared/list-actions";
 import {
   Table,
@@ -23,16 +23,27 @@ import {
   useDeleteStudent,
   useMarkAbsentStudent,
 } from "@/hooks/use-student";
+import { usePermissions } from "@/hooks/use-user-permission";
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarImage,
+} from "@workspace/ui/components/avatar";
 
 interface StudentWithRelation extends Student {
-  className: ClassName;
+  className: {
+    name: string;
+  };
   studentStatus: StudentStatus | null;
+  institute: {
+    name: string;
+  };
   batch: {
     name: string;
   } | null;
-  salaryPayments: {
-    id: string;
-  }[];
+  _count: {
+    salaryPayments: number;
+  };
 }
 
 interface StudentListProps {
@@ -43,6 +54,7 @@ export const StudentList = ({ students }: StudentListProps) => {
   const { onOpen } = useDeleteStudent();
   const { onOpen: onOpenBatchTransfer } = useBatchTransfer();
   const { onOpen: onMarkAsAbsent } = useMarkAbsentStudent();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -65,15 +77,20 @@ export const StudentList = ({ students }: StudentListProps) => {
       </TableHeader>
       <TableBody>
         {students.map((student) => (
-          <TableRow key={student.id}>
+          <TableRow key={student.id} className="even:bg-muted">
             <TableCell>{student.studentId}</TableCell>
-            <TableCell>Image</TableCell>
+            <TableCell>
+              <Avatar>
+                <AvatarImage src={student.imageUrl || ""} alt={student.name} />
+                <AvatarFallback>{student.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+            </TableCell>
             <TableCell className="hover:underline">
               <Link href={`/student/${student.id}`} prefetch>
                 {student.name}
               </Link>
             </TableCell>
-            <TableCell>{student.school}</TableCell>
+            <TableCell>{student.institute.name}</TableCell>
             <TableCell>{student.className.name}</TableCell>
             <TableCell>{student.group ? student.group : "-"}</TableCell>
             <TableCell>{student?.batch?.name || "-"}</TableCell>
@@ -83,10 +100,10 @@ export const StudentList = ({ students }: StudentListProps) => {
             <TableCell>
               <Badge
                 variant={
-                  student.salaryPayments.length <= 0 ? "default" : "destructive"
+                  student._count.salaryPayments <= 0 ? "default" : "destructive"
                 }
               >
-                {student.salaryPayments.length} month
+                {student._count.salaryPayments} month
               </Badge>
             </TableCell>
             <TableCell>
@@ -107,11 +124,13 @@ export const StudentList = ({ students }: StudentListProps) => {
                   title="View"
                   href={`/student/${student.id}`}
                   icon={Eye}
+                  hasPermission={hasPermission("student", "read")}
                 />
                 <ListActionLink
                   title="Edit"
                   href={`/student/edit/${student.id}`}
                   icon={Edit}
+                  hasPermission={hasPermission("student", "update")}
                 />
                 <ListActionButton
                   title="Batch Transfer"
@@ -124,18 +143,21 @@ export const StudentList = ({ students }: StudentListProps) => {
                       student.batchId || ""
                     )
                   }
+                  hasPermission={hasPermission("student", "batch_transfer")}
                 />
                 <ListActionButton
                   isDanger
                   title="Mark as Absent"
                   icon={UserRoundX}
                   onClick={() => onMarkAsAbsent(student.id)}
+                  hasPermission={hasPermission("student", "toggle_present")}
                 />
                 <ListActionButton
                   isDanger
                   title="Delete"
                   icon={Trash2}
                   onClick={() => onOpen(student.id)}
+                  hasPermission={hasPermission("student", "delete")}
                 />
               </ListActions>
             </TableCell>

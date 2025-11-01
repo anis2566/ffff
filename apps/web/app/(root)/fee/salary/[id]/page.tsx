@@ -2,7 +2,7 @@ import { Metadata } from "next";
 import { prefetch, trpc } from "@/trpc/server";
 
 import { ContentLayout } from "@/modules/ui/layout/content-layout";
-import { SalaryPaymentView } from "@/modules/fee/ui/view/salary-payment-view";
+import { SalaryPaymentView } from "@/modules/salary-payment/ui/view/salary-payment-view";
 
 export const metadata: Metadata = {
   title: "Salary Payment",

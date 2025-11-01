@@ -94,7 +94,7 @@ export const examResultRouter = {
     .input(
       z.object({
         resultId: z.string(),
-        studentIds: z.array(z.string()).min(1),
+        studentIds: z.array(z.string()),
       })
     )
     .mutation(async ({ ctx, input }) => {

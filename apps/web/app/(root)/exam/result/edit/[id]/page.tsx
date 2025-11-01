@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import { HydrateClient, prefetch, trpc } from "@/trpc/server";
 
 import { ContentLayout } from "@/modules/ui/layout/content-layout";
-import { EditExamResultView } from "@/modules/exam/ui/views/edit-exam-result-view";
+import { EditExamResultView } from "@/modules/exam-result/ui/views/edit-exam-result-view";
 
 export const metadata: Metadata = {
   title: "Edit Exam Result",

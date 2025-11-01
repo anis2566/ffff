@@ -20,37 +20,33 @@ import {
 import { Form } from "@workspace/ui/components/form";
 import { FormCalendar } from "@workspace/ui/shared/form-calendar";
 
-import { useGetHomeworks } from "../../filters/use-get-homeworks";
-
 export const NewHomeworkForm = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
   const trpc = useTRPC();
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const [filters] = useGetHomeworks();
-
   const { mutate: createHomework, isPending } = useMutation(
     trpc.homework.createOne.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.homework.getMany.queryOptions({ ...filters })
-        );
+        await queryClient.invalidateQueries({
+          queryKey: trpc.homework.getMany.queryKey(),
+        });
         router.push("/homework");
       },
     })
@@ -62,7 +58,7 @@ export const NewHomeworkForm = () => {
       date: "",
       subjectId: "",
       batchId: "",
-      classNameId: ""
+      classNameId: "",
     },
   });
 
@@ -79,7 +75,6 @@ export const NewHomeworkForm = () => {
   );
 
   const onSubmit = (data: HomeworkSchemaType) => {
-    setButtonState("loading");
     createHomework(data);
   };
 
@@ -139,16 +134,12 @@ export const NewHomeworkForm = () => {
           />
           <LoadingButton
             type="submit"
-            onClick={form.handleSubmit(onSubmit)}
-            loadingText="Saving..."
-            successText="Saved!"
-            errorText={errorText || "Failed"}
             state={buttonState}
             onStateChange={setButtonState}
-            className="w-full md:w-auto rounded-full"
+            className="w-full rounded-full"
             icon={Send}
           >
-            Save
+            Submit
           </LoadingButton>
         </form>
       </Form>

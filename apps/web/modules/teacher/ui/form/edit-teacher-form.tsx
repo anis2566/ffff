@@ -40,6 +40,7 @@ import { Badge } from "@workspace/ui/components/badge";
 import {
   DAYS,
   GENDER,
+  GROUPS,
   LEVELS,
   NATIONALITY,
   RELIGION,
@@ -73,7 +74,17 @@ const STEPS = [
   {
     id: 2,
     name: "Academic Info",
-    fields: ["currentInstitution", "currentSubject"] as const,
+    fields: [
+      "sscSchool",
+      "sscGroup",
+      "sscResult",
+      "hscSchool",
+      "hscGroup",
+      "hscResult",
+      "degreeSchool",
+      "degreeGroup",
+      "degreeResult",
+    ] as const,
     Icon: School,
   },
   {
@@ -131,8 +142,15 @@ const DEFAULT_VALUES: TeacherSchemaType = {
   permanentDistrict: "",
   phone: "",
   altPhone: "",
-  currentInstitution: "",
-  currentSubject: "",
+  sscSchool: "",
+  sscGroup: "",
+  sscResult: "",
+  hscSchool: "",
+  hscGroup: "",
+  hscResult: "",
+  degreeSchool: "",
+  degreeResult: "",
+  degreeSubject: "",
   level: [],
   availableTimes: [],
   availableDays: [],
@@ -148,6 +166,7 @@ const SELECT_OPTIONS = {
   levels: Object.values(LEVELS).map((v) => ({ label: v, value: v })),
   days: Object.values(DAYS).map((v) => ({ label: v, value: v })),
   times: Object.values(timeSlots).map((v) => ({ label: v, value: v })),
+  group: Object.values(GROUPS).map((v) => ({ label: v, value: v })),
 };
 
 // Custom hook for teacher ID management
@@ -236,24 +255,108 @@ const PersonalInfoStep = ({ form, trigger, isPending }: StepProps) => (
 );
 
 const AcademicInfoStep = ({ form, trigger, isPending }: StepProps) => (
-  <div className="grid md:grid-cols-2 gap-6 items-start">
-    <FormInput
-      form={form}
-      name="currentInstitution"
-      label="Current Institution"
-      type="text"
-      trigger={trigger}
-      disabled={isPending}
-    />
+  <div className="space-y-4 w-full">
+    <div className="flex flex-col">
+      <Badge variant="default" className="mx-auto">
+        SSC
+      </Badge>
+      <Separator className="my-2" />
+      <div className="grid md:grid-cols-3 gap-6 items-start">
+        <FormInput
+          form={form}
+          name="sscSchool"
+          label="School Name"
+          type="text"
+          trigger={trigger}
+          disabled={isPending}
+        />
 
-    <FormInput
-      form={form}
-      name="currentSubject"
-      label="Subject/Specialization"
-      type="text"
-      trigger={trigger}
-      disabled={isPending}
-    />
+        <FormSelect
+          form={form}
+          name="sscGroup"
+          label="Group"
+          options={SELECT_OPTIONS.group}
+          placeholder="select group"
+          trigger={trigger}
+          disabled={isPending}
+        />
+        <FormInput
+          form={form}
+          name="sscResult"
+          label="Result"
+          type="text"
+          trigger={trigger}
+          disabled={isPending}
+        />
+      </div>
+    </div>
+    <div className="flex flex-col">
+      <Badge variant="default" className="mx-auto">
+        HSC
+      </Badge>
+      <Separator className="my-2" />
+      <div className="grid md:grid-cols-3 gap-6 items-start">
+        <FormInput
+          form={form}
+          name="hscSchool"
+          label="College Name"
+          type="text"
+          trigger={trigger}
+          disabled={isPending}
+        />
+
+        <FormSelect
+          form={form}
+          name="hscGroup"
+          label="Group"
+          options={SELECT_OPTIONS.group}
+          placeholder="select group"
+          trigger={trigger}
+          disabled={isPending}
+        />
+        <FormInput
+          form={form}
+          name="hscResult"
+          label="Result"
+          type="text"
+          trigger={trigger}
+          disabled={isPending}
+        />
+      </div>
+    </div>
+    <div className="flex flex-col">
+      <Badge variant="default" className="mx-auto">
+        Graduation
+      </Badge>
+      <Separator className="my-2" />
+      <div className="grid md:grid-cols-3 gap-6 items-start">
+        <FormInput
+          form={form}
+          name="degreeSchool"
+          label="University Name"
+          type="text"
+          trigger={trigger}
+          disabled={isPending}
+        />
+
+        <FormInput
+          form={form}
+          name="degreeSubject"
+          label="Subject"
+          type="text"
+          trigger={trigger}
+          disabled={isPending}
+        />
+        <FormInput
+          form={form}
+          name="degreeResult"
+          label="Result"
+          type="text"
+          trigger={trigger}
+          disabled={isPending}
+        />
+      </div>
+    </div>
   </div>
 );
 

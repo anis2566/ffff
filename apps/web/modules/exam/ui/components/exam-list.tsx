@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  ArrowUpFromLine,
-  Edit,
-  FileUser,
-  Trash2,
-} from "lucide-react";
+import { ArrowUpFromLine, Edit, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import Link from "next/link";
 
@@ -24,6 +19,7 @@ import { ListActionButton } from "@/components/list-action-button";
 import { ListActionLink } from "@/components/list-action-link";
 
 import { useDeleteExam, usePushToDocument } from "@/hooks/use-exam";
+import { usePermissions } from "@/hooks/use-user-permission";
 
 interface ExamWithRelation extends Exam {
   className: {
@@ -47,6 +43,7 @@ interface HomeworkListProps {
 export const ExamList = ({ exams }: HomeworkListProps) => {
   const { onOpen } = useDeleteExam();
   const { onOpen: onPush } = usePushToDocument();
+  const { hasPermission } = usePermissions();
 
   return (
     <Table>
@@ -68,7 +65,7 @@ export const ExamList = ({ exams }: HomeworkListProps) => {
       </TableHeader>
       <TableBody>
         {exams.map((exam) => (
-          <TableRow key={exam.id}>
+          <TableRow key={exam.id} className="even:bg-muted">
             <TableCell className="hover:underline">
               <Link href={`/exam/${exam.id}`}>{exam.name}</Link>
             </TableCell>
@@ -88,11 +85,7 @@ export const ExamList = ({ exams }: HomeworkListProps) => {
                   title="Edit"
                   href={`/exam/edit/${exam.id}`}
                   icon={Edit}
-                />
-                <ListActionLink
-                  title="Result"
-                  href={`/exam/${exam.id}/result`}
-                  icon={FileUser}
+                  hasPermission={hasPermission("exam", "update")}
                 />
                 <ListActionButton
                   title="Push to Document"
@@ -100,12 +93,14 @@ export const ExamList = ({ exams }: HomeworkListProps) => {
                   onClick={() =>
                     onPush(exam.name, exam.classNameId, exam.subjectId)
                   }
+                  hasPermission={hasPermission("document", "create")}
                 />
                 <ListActionButton
                   isDanger
                   title="Delete"
                   icon={Trash2}
                   onClick={() => onOpen(exam.id)}
+                  hasPermission={hasPermission("exam", "delete")}
                 />
               </ListActions>
             </TableCell>

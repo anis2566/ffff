@@ -3,100 +3,132 @@
 import { useState } from "react";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTRPC } from "@/trpc/react";
 
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@workspace/ui/components/alert-dialog";
 import {
   ButtonState,
   LoadingButton,
 } from "@workspace/ui/shared/loadign-button";
 
-import { useGetStudents } from "../../filters/use-get-students";
 import { useMarkPesentStudent } from "@/hooks/use-student";
 import { useGetAbsentStudents } from "../../filters/use-get-absent-students";
+import z from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@workspace/ui/components/dialog";
+import { Form } from "@workspace/ui/components/form";
+import { FormSelect } from "@workspace/ui/shared/form-select";
+
+const formSchema = z.object({
+  batchId: z.string(),
+});
 
 export const MarkAsPresentModal = () => {
   const [buttonState, setButtonState] = useState<ButtonState>("idle");
-  const [errorText, setErrorText] = useState<string>("");
 
-  const { isOpen, studentId, onClose } = useMarkPesentStudent();
+  const { isOpen, studentId, classNameId, onClose } = useMarkPesentStudent();
   const trpc = useTRPC();
   const queryClient = useQueryClient();
 
-  const [filters] = useGetStudents();
   const [absentFilters] = useGetAbsentStudents();
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      batchId: "",
+    },
+  });
+
+  const { data: batches } = useQuery(
+    trpc.batch.getByClass.queryOptions(classNameId)
+  );
+
+  const batchData = (batches ?? []).map((batch) => ({
+    label: batch.name,
+    value: batch.id,
+  }));
 
   const { mutate: markPresent, isPending } = useMutation(
     trpc.student.markAsPresent.mutationOptions({
+      onMutate: () => {
+        setButtonState("loading");
+      },
       onError: (err) => {
-        setErrorText(err.message);
         setButtonState("error");
         toast.error(err.message);
       },
       onSuccess: async (data) => {
         if (!data.success) {
           setButtonState("error");
-          setErrorText(data.message);
           toast.error(data.message);
           return;
         }
         setButtonState("success");
         toast.success(data.message);
-        queryClient.invalidateQueries(
-          trpc.student.getMany.queryOptions({ ...filters })
-        );
-        queryClient.invalidateQueries(
-          trpc.student.getAbsentMany.queryOptions({ ...absentFilters })
-        );
-        onClose();
+        await queryClient.invalidateQueries({
+          queryKey: trpc.student.getMany.queryKey(),
+        });
+        await queryClient.invalidateQueries({
+          queryKey: trpc.student.getAbsentMany.queryKey(absentFilters),
+        });
+
+        setTimeout(() => {
+          onClose();
+        }, 2000);
       },
     })
   );
 
-  const handleMarkPresent = () => {
-    setButtonState("loading");
-    markPresent(studentId);
+  const handleSubmit = (data: z.infer<typeof formSchema>) => {
+    markPresent({ studentId, batchId: data.batchId });
   };
 
+  const handleOpenChange = (open: boolean) => {
+    if (!open && buttonState === "idle") {
+      onClose();
+    }
+  };
   return (
-    <AlertDialog
-      open={isOpen && !!studentId}
-      onOpenChange={isPending ? () => {} : onClose}
-    >
-      <AlertDialogContent className="rounded-xs">
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This action cannot be undone. This will activate the student.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
-          <LoadingButton
-            type="submit"
-            onClick={handleMarkPresent}
-            loadingText="Submitting..."
-            successText="Submitted!"
-            errorText={errorText || "Failed"}
-            state={buttonState}
-            onStateChange={setButtonState}
-            className="w-full md:w-auto"
-            variant="default"
-            icon={Send}
+    <Dialog open={isOpen} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Set up your room</DialogTitle>
+          <DialogDescription>
+            This information will be used to create your room.
+          </DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(handleSubmit)}
+            className="space-y-4"
           >
-            Submit
-          </LoadingButton>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+            <FormSelect
+              form={form}
+              name="batchId"
+              label="Batch"
+              placeholder="Select Batch"
+              options={batchData}
+              disabled={isPending}
+            />
+            <LoadingButton
+              type="submit"
+              state={buttonState}
+              onStateChange={setButtonState}
+              className="w-full rounded-full"
+              icon={Send}
+            >
+              Submit
+            </LoadingButton>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 };
