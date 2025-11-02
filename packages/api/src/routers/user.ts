@@ -6,16 +6,21 @@ import { StreamChat } from "stream-chat";
 
 import { permissionProcedure, protectedProcedure } from "../trpc";
 
-export const engagespot = EngagespotClient({
-  apiKey: process.env.NEXT_PUBLIC_ENGAGESPOT_API_KEY!,
-  apiSecret: process.env.ENGAGESPOT_API_SECRET!,
-  dataRegion: "us",
-});
+// 🧩 Lazy initialization helpers (only run at runtime)
+function getEngagespot() {
+  return EngagespotClient({
+    apiKey: process.env.NEXT_PUBLIC_ENGAGESPOT_API_KEY!,
+    apiSecret: process.env.ENGAGESPOT_API_SECRET!,
+    dataRegion: "us",
+  });
+}
 
-export const getStreamServerClient = StreamChat.getInstance(
-  process.env.NEXT_PUBLIC_GETSTREAM_API_KEY!,
-  process.env.GETSTREAM_API_SECRET
-);
+function getStreamServerClient() {
+  return StreamChat.getInstance(
+    process.env.NEXT_PUBLIC_GETSTREAM_API_KEY!,
+    process.env.GETSTREAM_API_SECRET!
+  );
+}
 
 // Shared error handler
 const handleError = (error: unknown, operation: string) => {
@@ -64,6 +69,9 @@ export const userRouter = {
       const { userId, roles } = input;
 
       try {
+        const engagespot = getEngagespot();
+        const streamClient = getStreamServerClient();
+
         const [dbRoles, user] = await Promise.all([
           ctx.db.role.findMany({
             where: { name: { in: roles } },
@@ -100,7 +108,7 @@ export const userRouter = {
             engagespot.createOrUpdateUser(userId, {
               email: user.email || undefined,
             }),
-            getStreamServerClient.upsertUser({
+            streamClient.upsertUser({
               id: user.id,
               name: user.name || undefined,
               role: "user",
@@ -121,6 +129,9 @@ export const userRouter = {
       const { id } = input;
 
       try {
+        const engagespot = getEngagespot();
+        const streamClient = getStreamServerClient();
+
         await ctx.db.$transaction(async (tx) => {
           await tx.user.delete({
             where: { id },
@@ -128,7 +139,7 @@ export const userRouter = {
 
           await Promise.all([
             engagespot.users.delete(id),
-            getStreamServerClient.deleteUser(id),
+            streamClient.deleteUser(id),
           ]);
         });
 
