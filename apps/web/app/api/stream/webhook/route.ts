@@ -5,14 +5,14 @@ import { StreamChat } from "stream-chat";
 
 import { triggerNotification } from "@workspace/api/notification";
 
-const streamClient = StreamChat.getInstance(
-  process.env.NEXT_PUBLIC_GETSTREAM_API_KEY!,
-  process.env.GETSTREAM_API_SECRET!
-);
-
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
+  const streamClient = StreamChat.getInstance(
+    process.env.NEXT_PUBLIC_GETSTREAM_API_KEY!,
+    process.env.GETSTREAM_API_SECRET!
+  );
+
   const signature = req.headers.get("x-signature");
   const rawBody = await req.text();
 
@@ -36,9 +36,12 @@ export async function POST(req: NextRequest) {
 
       if (chatUsers.length > 0) {
         for (const user of chatUsers) {
-            console.log("Is Online", event.members
-                .find((member) => member.user.id === user.user_id)
-                ?.user.online.toString())
+          console.log(
+            "Is Online",
+            event.members
+              .find((member) => member.user.id === user.user_id)
+              ?.user.online.toString()
+          );
           void triggerNotification({
             identifier: "new_message",
             recipients: [user.user.id],
